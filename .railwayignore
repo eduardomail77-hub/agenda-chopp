@@ -1,0 +1,11 @@
+node_modules
+frontend
+.git
+.gitignore
+README.md
+.env.example
+*.log
+.vscode
+.idea
+dist
+build
