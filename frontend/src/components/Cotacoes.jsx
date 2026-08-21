@@ -132,6 +132,7 @@ export default function Cotacoes({ ehAdmin, onConvertida }) {
           ['nova', `Novas${novas ? ` (${novas})` : ''}`],
           ['respondida', 'Aguardando cliente'],
           ['convertida', 'Viraram pedido'],
+          ['perdida', 'Perdidas'],
           ['todas', 'Todas'],
         ].map(([k, l]) => (
           <button key={k} className={filtro === k ? 'subtab on' : 'subtab'} onClick={() => setFiltro(k)}>
@@ -464,6 +465,19 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
           </div>
 
           <div className="formFoot">
+            {cotacao.status !== 'convertida' && (
+              <button
+                type="button"
+                className="btn-sair"
+                disabled={salvando}
+                onClick={async () => {
+                  if (!confirm('Marcar esta cotação como perdida? Ela sai da lista de novas.')) return;
+                  if (await salvar('perdida')) onAtualizada();
+                }}
+              >
+                Marcar como perdida
+              </button>
+            )}
             <button type="button" className="btn-sair" onClick={() => salvar().then((r) => r && setOk('Rascunho salvo'))} disabled={salvando}>
               Salvar rascunho
             </button>
