@@ -12,3 +12,7 @@ build/
 *.swo
 *~
 .env.production
+
+# Windows
+desktop.ini
+Thumbs.db
