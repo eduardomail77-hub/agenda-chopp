@@ -34,4 +34,16 @@ router.get('/simple', (req, res) => {
   res.json({ ok: true, message: 'Backend is working' });
 });
 
+router.get('/pedidos-query', async (req, res) => {
+  try {
+    console.log('Testando query de pedidos...');
+    const result = await query('SELECT * FROM pedidos LIMIT 5');
+    console.log('Query executada com sucesso:', result.rows.length, 'linhas');
+    res.json({ success: true, count: result.rows.length, rows: result.rows });
+  } catch (err) {
+    console.error('Erro na query:', err.message, err.code);
+    res.status(500).json({ erro: err.message, code: err.code });
+  }
+});
+
 export default router;
