@@ -257,6 +257,25 @@ export async function removerAcessoCalendario(email) {
   }
 }
 
+/**
+ * Garante que todo mundo marcado para receber aviso enxergue o calendário.
+ * Roda na subida do servidor porque uma pessoa pode ter sido cadastrada
+ * enquanto o Google estava fora, ou antes do calendário existir.
+ */
+export async function sincronizarAcessos() {
+  try {
+    const { rows } = await query(
+      'SELECT email FROM usuarios WHERE ativo = true AND recebe_aviso = true'
+    );
+    for (const { email } of rows) {
+      await compartilharCalendario(email);
+    }
+    if (rows.length) console.log(`✓ Acesso ao calendário conferido para ${rows.length} pessoa(s)`);
+  } catch (err) {
+    console.error('Não consegui sincronizar os acessos ao calendário:', err.message);
+  }
+}
+
 /** Usado pela tela de configurações para mostrar se a integração está de pé. */
 export async function testarConexao() {
   if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {

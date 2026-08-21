@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { query } from './connection.js';
+import { sincronizarAcessos } from '../services/googleCalendarService.js';
 
 async function waitForDatabase(maxRetries = 30) {
   for (let i = 0; i < maxRetries; i++) {
@@ -215,4 +216,9 @@ export async function initializeDatabase() {
   await migrate();
   await seed();
   console.log('✓ Banco de dados inicializado com sucesso');
+
+  // Não bloqueia a subida do servidor se o Google estiver fora
+  sincronizarAcessos().catch((err) =>
+    console.error('Falha ao sincronizar acessos:', err.message)
+  );
 }
