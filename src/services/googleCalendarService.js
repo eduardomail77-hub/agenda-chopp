@@ -104,7 +104,8 @@ function resumoFinanceiro(pedido) {
 }
 
 function descricao(pedido, etapa) {
-  const cervejas = pedido.itens?.map((i) => `${i.cerveja} (${i.litros}L)`).join(', ') || 'N/A';
+  const cervejas =
+    pedido.itens?.map((i) => `${i.cerveja} (${Number(i.litros)}L)`).join(', ') || 'N/A';
   const chopeiras = pedido.chopeiras?.join(', ') || 'N/A';
   const { subtotal, entrega, desconto, total } = resumoFinanceiro(pedido);
 
