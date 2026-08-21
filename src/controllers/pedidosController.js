@@ -5,36 +5,22 @@ export async function getPedidos(req, res) {
   try {
     const { status, data_inicio, data_fim } = req.query;
 
-    let sql = `
-      SELECT p.*,
-        json_agg(
-          json_build_object(
-            'cerveja', pi.cerveja,
-            'litros', pi.litros,
-            'valor_litro', pi.valor_litro
-          )
-        ) FILTER (WHERE pi.id IS NOT NULL) as itens,
-        array_agg(DISTINCT pc.chopeira_id) FILTER (WHERE pc.chopeira_id IS NOT NULL) as chopeiras
-      FROM pedidos p
-      LEFT JOIN pedido_itens pi ON p.id = pi.pedido_id
-      LEFT JOIN pedido_chopeiras pc ON p.id = pc.pedido_id
-    `;
-
+    let sql = 'SELECT * FROM pedidos';
     const params = [];
     const conditions = [];
 
     if (status) {
-      conditions.push(`p.status = $${params.length + 1}`);
+      conditions.push(`status = $${params.length + 1}`);
       params.push(status);
     }
 
     if (data_inicio) {
-      conditions.push(`p.data_entrega >= $${params.length + 1}`);
+      conditions.push(`data_entrega >= $${params.length + 1}`);
       params.push(data_inicio);
     }
 
     if (data_fim) {
-      conditions.push(`p.data_entrega <= $${params.length + 1}`);
+      conditions.push(`data_entrega <= $${params.length + 1}`);
       params.push(data_fim);
     }
 
@@ -42,10 +28,23 @@ export async function getPedidos(req, res) {
       sql += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    sql += ` GROUP BY p.id ORDER BY p.data_entrega ASC`;
+    sql += ' ORDER BY data_entrega ASC';
 
     const result = await query(sql, params);
-    res.json(result.rows);
+
+    const pedidosComDetalhes = await Promise.all(
+      result.rows.map(async (pedido) => {
+        const itens = await query('SELECT * FROM pedido_itens WHERE pedido_id = $1', [pedido.id]);
+        const chopeiras = await query('SELECT chopeira_id FROM pedido_chopeiras WHERE pedido_id = $1', [pedido.id]);
+        return {
+          ...pedido,
+          itens: itens.rows,
+          chopeiras: chopeiras.rows.map(c => c.chopeira_id),
+        };
+      })
+    );
+
+    res.json(pedidosComDetalhes);
   } catch (err) {
     console.error('Erro ao buscar pedidos:', err);
     res.status(500).json({ erro: 'Erro ao buscar pedidos' });
