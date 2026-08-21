@@ -7,7 +7,8 @@ const brl = (n) =>
 
 const calcTotal = (o) =>
   (o.itens || []).reduce((s, it) => s + (Number(it.litros) || 0) * (Number(it.valor_litro) || 0), 0) +
-  (Number(o.valor_entrega_coleta) || 0);
+  (Number(o.valor_entrega_coleta) || 0) -
+  (Number(o.desconto) || 0);
 
 const totalLitros = (o) => (o.itens || []).reduce((s, it) => s + (Number(it.litros) || 0), 0);
 
@@ -17,7 +18,7 @@ const diaSemana = (s) => {
   return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][dt.getDay()];
 };
 
-export default function Pendentes({ orders, onRefresh }) {
+export default function Pendentes({ orders, ehAdmin, onRefresh }) {
   const [confirmando, setConfirmando] = useState(null);
   const [editando, setEditando] = useState(null);
   const [erro, setErro] = useState(null);
@@ -123,34 +124,38 @@ export default function Pendentes({ orders, onRefresh }) {
                 <span>Total</span>
                 <b>{brl(calcTotal(o))}</b>
               </div>
-              <div className="actions" style={{ display: 'flex', gap: '6px' }}>
-                <button
-                  className="confirm"
-                  onClick={() => handleConfirmar(o.id)}
-                  disabled={confirmando === o.id}
-                >
-                  {confirmando === o.id ? 'Confirmando...' : 'Confirmar'}
-                </button>
-                <button
-                  style={{
-                    border: '0',
-                    background: '#fee2e2',
-                    color: '#ef4444',
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    fontWeight: '600',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => handleDeletar(o.id)}
-                >
-                  Rejeitar
-                </button>
-              </div>
+              {ehAdmin && (
+                <div className="actions" style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    className="confirm"
+                    onClick={() => handleConfirmar(o.id)}
+                    disabled={confirmando === o.id}
+                  >
+                    {confirmando === o.id ? 'Confirmando...' : 'Confirmar'}
+                  </button>
+                  <button
+                    style={{
+                      border: '0',
+                      background: '#fee2e2',
+                      color: '#ef4444',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => handleDeletar(o.id)}
+                  >
+                    Rejeitar
+                  </button>
+                </div>
+              )}
             </div>
 
             <p className="hint">
-              ⚠️ Revise a disponibilidade antes de confirmar. Ao confirmar, criará evento no Google Agenda.
+              {ehAdmin
+                ? 'Revise a disponibilidade antes de confirmar. Ao confirmar, o evento entra no Google Agenda com os lembretes configurados.'
+                : 'Aguardando um administrador conferir a disponibilidade e confirmar.'}
             </p>
           </article>
         ))}

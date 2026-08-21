@@ -33,6 +33,26 @@ export async function query(text, params) {
   }
 }
 
+/**
+ * Roda várias queries na MESMA conexão, dentro de uma transação.
+ * Necessário porque cada chamada de query() pega uma conexão diferente
+ * do pool, o que faz BEGIN/COMMIT soltos não terem efeito nenhum.
+ */
+export async function transacao(fn) {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const resultado = await fn(client);
+    await client.query('COMMIT');
+    return resultado;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function close() {
   if (pool) {
     await pool.end();
@@ -40,4 +60,4 @@ export async function close() {
   }
 }
 
-export default { query, close };
+export default { query, transacao, close };

@@ -1,33 +1,42 @@
 import { useState, useEffect } from 'react';
-import { getPedidos, confirmPedido, updatePedido } from './services/api';
+import { getPedidos, confirmPedido, updatePedido, getUsuarioSalvo, sair } from './services/api';
+import Login from './components/Login';
 import Agenda from './components/Agenda';
 import Disponibilidade from './components/Disponibilidade';
 import NovoPedido from './components/NovoPedido';
 import Pendentes from './components/Pendentes';
-import AgendarPublico from './components/AgendarPublico';
+import Configuracoes from './components/Configuracoes';
 
 export default function App() {
+  const [usuario, setUsuario] = useState(getUsuarioSalvo());
   const [orders, setOrders] = useState([]);
   const [tab, setTab] = useState('agenda');
   const [dispData, setDispData] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [modo, setModo] = useState('admin'); // admin ou cliente
 
-  // Carregar pedidos na montagem
+  const ehAdmin = usuario?.perfil === 'admin';
+
   useEffect(() => {
-    loadPedidos();
+    function aoExpirar() {
+      setUsuario(null);
+      setError('Sua sessão expirou, entre de novo');
+    }
+    window.addEventListener('sessao-expirada', aoExpirar);
+    return () => window.removeEventListener('sessao-expirada', aoExpirar);
   }, []);
+
+  useEffect(() => {
+    if (usuario) loadPedidos();
+  }, [usuario]);
 
   async function loadPedidos() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getPedidos();
-      setOrders(data);
+      setOrders(await getPedidos());
     } catch (err) {
       setError(err.message);
-      console.error('Erro ao carregar pedidos:', err);
     } finally {
       setLoading(false);
     }
@@ -35,10 +44,11 @@ export default function App() {
 
   async function handleConfirm(id) {
     try {
+      setError(null);
       await confirmPedido(id);
-      setOrders((o) => o.map((x) => (x.id === id ? { ...x, status: 'confirmado' } : x)));
+      await loadPedidos();
     } catch (err) {
-      setError(`Erro ao confirmar: ${err.message}`);
+      setError(`Não consegui confirmar: ${err.message}`);
     }
   }
 
@@ -52,14 +62,28 @@ export default function App() {
     }
   }
 
-  async function handleSaveNew(newOrder) {
-    try {
-      await loadPedidos();
-      setTab('agenda');
-    } catch (err) {
-      setError(`Erro ao criar pedido: ${err.message}`);
-    }
+  async function handleSaveNew() {
+    await loadPedidos();
+    setTab('agenda');
   }
+
+  function handleSair() {
+    sair();
+    setUsuario(null);
+    setOrders([]);
+  }
+
+  if (!usuario) {
+    return <Login onEntrar={setUsuario} />;
+  }
+
+  const abas = [
+    ['agenda', 'Agenda'],
+    ['pendentes', 'Pendentes'],
+    ['disp', 'Disponibilidade'],
+    ['novo', 'Novo pedido'],
+    ['config', 'Configurações'],
+  ];
 
   return (
     <div className="wrap">
@@ -70,62 +94,21 @@ export default function App() {
             <h1>Agenda de Chopp</h1>
             <p>Fora da Lei · entregas e chopeiras</p>
           </div>
+          <div className="sessao">
+            <span className="quem">
+              {usuario.nome}
+              <span className={ehAdmin ? 'badge admin' : 'badge'}>{usuario.perfil}</span>
+            </span>
+            <button className="btn-sair" onClick={handleSair}>Sair</button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button
-            style={{
-              background: modo === 'admin' ? '#6366f1' : '#e0e3e8',
-              color: modo === 'admin' ? '#ffffff' : '#1a202c',
-              border: 'none',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '600',
-            }}
-            onClick={() => {
-              setModo('admin');
-              setTab('agenda');
-            }}
-          >
-            👤 Admin
-          </button>
-          <button
-            style={{
-              background: modo === 'cliente' ? '#6366f1' : '#e0e3e8',
-              color: modo === 'cliente' ? '#ffffff' : '#1a202c',
-              border: 'none',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '600',
-            }}
-            onClick={() => {
-              setModo('cliente');
-              setTab('agendar');
-            }}
-          >
-            🔗 Cliente
-          </button>
-        </div>
+
         <nav className="tabs">
-          {modo === 'admin' &&
-            [
-              ['agenda', 'Agenda'],
-              ['pendentes', 'Pendentes'],
-              ['disp', 'Disponibilidade'],
-              ['novo', 'Novo pedido'],
-            ].map(([k, l]) => (
-              <button key={k} className={tab === k ? 'tab on' : 'tab'} onClick={() => setTab(k)}>
-                {l}
-              </button>
-            ))}
-          {modo === 'cliente' && (
-            <button className={tab === 'agendar' ? 'tab on' : 'tab'} onClick={() => setTab('agendar')}>
-              Agendar Chopp
+          {abas.map(([k, l]) => (
+            <button key={k} className={tab === k ? 'tab on' : 'tab'} onClick={() => setTab(k)}>
+              {l}
             </button>
-          )}
+          ))}
         </nav>
       </header>
 
@@ -136,42 +119,25 @@ export default function App() {
       )}
 
       {loading ? (
-        <div className="body">
-          <div className="loading">Carregando...</div>
-        </div>
+        <div className="body"><div className="loading">Carregando...</div></div>
       ) : (
         <>
-          {modo === 'admin' && (
-            <>
-              {tab === 'agenda' && (
-                <Agenda
-                  orders={orders}
-                  onConfirm={handleConfirm}
-                  onTogglePago={handleTogglePago}
-                />
-              )}
-              {tab === 'pendentes' && (
-                <Pendentes
-                  orders={orders}
-                  onRefresh={loadPedidos}
-                />
-              )}
-              {tab === 'disp' && (
-                <Disponibilidade
-                  data={dispData}
-                  setData={setDispData}
-                  orders={orders}
-                />
-              )}
-              {tab === 'novo' && (
-                <NovoPedido
-                  orders={orders}
-                  onSave={handleSaveNew}
-                />
-              )}
-            </>
+          {tab === 'agenda' && (
+            <Agenda
+              orders={orders}
+              ehAdmin={ehAdmin}
+              onConfirm={handleConfirm}
+              onTogglePago={handleTogglePago}
+            />
           )}
-          {modo === 'cliente' && tab === 'agendar' && <AgendarPublico />}
+          {tab === 'pendentes' && (
+            <Pendentes orders={orders} ehAdmin={ehAdmin} onConfirm={handleConfirm} onRefresh={loadPedidos} />
+          )}
+          {tab === 'disp' && (
+            <Disponibilidade data={dispData} setData={setDispData} orders={orders} />
+          )}
+          {tab === 'novo' && <NovoPedido orders={orders} onSave={handleSaveNew} />}
+          {tab === 'config' && <Configuracoes usuario={usuario} />}
         </>
       )}
     </div>

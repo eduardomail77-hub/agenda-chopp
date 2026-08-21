@@ -745,3 +745,367 @@ body {
     gap: 6px;
   }
 }
+
+/* ============ Login ============ */
+
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 32px;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.login-brand h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.login-brand p {
+  font-size: 11px;
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ============ Sessão no topo ============ */
+
+.sessao {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quem {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-sair {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.btn-sair:hover {
+  background: var(--error-bg);
+  color: var(--error);
+  border-color: var(--error-border);
+}
+
+.badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+.badge.admin {
+  background: #eef2ff;
+  color: var(--accent-gold);
+  border-color: #c7d2fe;
+}
+
+/* ============ Configurações ============ */
+
+.subtabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.subtab {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.subtab.on {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: #fff;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+
+.card h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.hint {
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.ok {
+  background: var(--success-bg);
+  border: 1px solid var(--success);
+  color: #065f46;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.field > span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.field input,
+.field select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-main);
+  width: 100%;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+.field.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.field.check input {
+  width: auto;
+}
+
+.btn-primary {
+  background: var(--accent-gold);
+  color: #fff;
+  border: none;
+  padding: 11px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.grid-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0 16px;
+}
+
+.form-inline {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.opcoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.opcao {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  background: var(--bg-input);
+}
+
+.opcao:has(input:checked) {
+  border-color: var(--accent-gold);
+  background: #eef2ff;
+}
+
+/* ============ Tabelas ============ */
+
+.tabela {
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.tabela-head,
+.tabela-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 12px;
+  padding: 12px 16px;
+  align-items: center;
+}
+
+.tabela-head {
+  background: var(--bg-input);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.tabela-row {
+  border-top: 1px solid var(--border-subtle);
+  font-size: 14px;
+}
+
+.tabela-row input[type='number'] {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 14px;
+  width: 100%;
+  max-width: 120px;
+}
+
+/* ============ Resumo do pedido ============ */
+
+.resumo {
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--bg-input);
+  margin-top: 6px;
+}
+
+.resumoLinha {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.resumoLinha b {
+  color: var(--text-main);
+}
+
+.resumoLinha.desconto b {
+  color: var(--success);
+}
+
+/* ============ Mobile ============ */
+
+@media (max-width: 640px) {
+  .tabela-head {
+    display: none;
+  }
+
+  .tabela-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .tabela-row > span {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .tabela-row > span::before {
+    content: attr(data-label);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 700;
+  }
+
+  .sessao {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .card {
+    padding: 18px 16px;
+  }
+}

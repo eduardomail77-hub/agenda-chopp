@@ -1,26 +1,34 @@
 import { useState, useEffect } from 'react';
-import { createPedido, getChopeiras, getCervejas } from '../services/api';
+import {
+  createPedido,
+  getChopeiras,
+  getCervejas,
+  getUsuarios,
+  getPreferencias,
+} from '../services/api';
 import Field from './common/Field';
 
-const EQUIPE = ['Eduardo', 'Giba', 'Entregador 1', 'Entregador 2'];
 const viasTxt = (v) => `${v} via${v > 1 ? 's' : ''}`;
 
 const brl = (n) =>
   (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const calcTotal = (f) =>
-  (f.itens || []).reduce((s, it) => s + (Number(it.litros) || 0) * (Number(it.valor_litro) || 0), 0) +
-  (Number(f.valor_entrega_coleta) || 0);
+const calcSubtotal = (f) =>
+  (f.itens || []).reduce((s, it) => s + (Number(it.litros) || 0) * (Number(it.valor_litro) || 0), 0);
 
-export default function NovoPedido({ onSave }) {
+const calcTotal = (f) =>
+  calcSubtotal(f) + (Number(f.valor_entrega_coleta) || 0) - (Number(f.desconto) || 0);
+
+export default function NovoPedido({ orders = [], onSave }) {
   const [f, setF] = useState({
     cliente: '',
     telefone: '',
     data_entrega: '',
-    itens: [{ cerveja: 'Predileta', litros: '', valor_litro: '' }],
+    itens: [{ cerveja: '', litros: '', valor_litro: '' }],
     chopeiras: [],
     gas: false,
     valor_entrega_coleta: '',
+    desconto: '',
     pago: false,
     resp_entrega: '',
     resp_coleta: '',
@@ -28,10 +36,10 @@ export default function NovoPedido({ onSave }) {
 
   const [chopeiras, setChopeiras] = useState([]);
   const [cervejas, setCervejas] = useState([]);
+  const [equipe, setEquipe] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [orders, setOrders] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -39,9 +47,29 @@ export default function NovoPedido({ onSave }) {
 
   async function loadData() {
     try {
-      const [chop, cerv] = await Promise.all([getChopeiras(), getCervejas()]);
-      setChopeiras(chop);
-      setCervejas(cerv);
+      const [chop, cerv, pessoas, prefs] = await Promise.all([
+        getChopeiras(),
+        getCervejas(),
+        getUsuarios(),
+        getPreferencias(),
+      ]);
+      const ativas = cerv.filter((c) => c.ativo);
+      setChopeiras(chop.filter((c) => c.ativo));
+      setCervejas(ativas);
+      setEquipe(pessoas.filter((p) => p.ativo));
+
+      // Já entra com o rótulo e os valores padrão preenchidos, mas tudo editável
+      setF((p) => ({
+        ...p,
+        valor_entrega_coleta: prefs.valor_entrega_padrao || '',
+        itens: [
+          {
+            cerveja: ativas[0]?.nome || '',
+            litros: '',
+            valor_litro: ativas[0]?.preco_litro || '',
+          },
+        ],
+      }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -49,17 +77,37 @@ export default function NovoPedido({ onSave }) {
     }
   }
 
+  const precoDe = (nome) => cervejas.find((c) => c.nome === nome)?.preco_litro ?? '';
+
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+
   const setItem = (i, k, v) =>
-    setF((p) => ({ ...p, itens: p.itens.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)) }));
+    setF((p) => ({
+      ...p,
+      itens: p.itens.map((it, idx) => {
+        if (idx !== i) return it;
+        // Trocar o rótulo repõe o preço de tabela, o vendedor ainda pode ajustar
+        if (k === 'cerveja') return { ...it, cerveja: v, valor_litro: precoDe(v) };
+        return { ...it, [k]: v };
+      }),
+    }));
+
   const addItem = () =>
-    setF((p) => ({ ...p, itens: [...p.itens, { cerveja: 'Predileta', litros: '', valor_litro: '' }] }));
+    setF((p) => ({
+      ...p,
+      itens: [
+        ...p.itens,
+        { cerveja: cervejas[0]?.nome || '', litros: '', valor_litro: cervejas[0]?.preco_litro || '' },
+      ],
+    }));
+
   const rmItem = (i) => setF((p) => ({ ...p, itens: p.itens.filter((_, idx) => idx !== i) }));
 
   const ocup = new Set();
   if (f.data_entrega) {
     orders.forEach((o) => {
-      if (o.data_entrega === f.data_entrega && o.status === 'confirmado') {
+      const dataPedido = String(o.data_entrega).split('T')[0];
+      if (dataPedido === f.data_entrega && o.status === 'confirmado') {
         o.chopeiras?.forEach((c) => ocup.add(c));
       }
     });
@@ -73,6 +121,7 @@ export default function NovoPedido({ onSave }) {
     .reduce((s, c) => s + c.vias, 0);
   const numCervejas = f.itens.length;
 
+  const subtotal = calcSubtotal(f);
   const total = calcTotal(f);
   const valido =
     f.cliente &&
@@ -92,6 +141,7 @@ export default function NovoPedido({ onSave }) {
         data_entrega: f.data_entrega,
         gas: f.gas,
         valor_entrega_coleta: f.valor_entrega_coleta || 0,
+        desconto: f.desconto || 0,
         pago: f.pago,
         resp_entrega: f.resp_entrega || null,
         resp_coleta: f.resp_coleta || null,
@@ -239,30 +289,65 @@ export default function NovoPedido({ onSave }) {
         </div>
 
         <div className="fgrid">
-          <Field label="Entrega + recolhimento (R$)">
-            <input
-              type="number"
-              value={f.valor_entrega_coleta}
-              onChange={(e) => set('valor_entrega_coleta', e.target.value)}
-              placeholder="0,00"
-            />
-          </Field>
           <Field label="Responsável pela entrega">
             <select value={f.resp_entrega} onChange={(e) => set('resp_entrega', e.target.value)}>
               <option value="">Definir depois</option>
-              {EQUIPE.map((p) => (
-                <option key={p}>{p}</option>
+              {equipe.map((p) => (
+                <option key={p.id} value={p.nome}>{p.nome}</option>
               ))}
             </select>
           </Field>
           <Field label="Responsável pela coleta">
             <select value={f.resp_coleta} onChange={(e) => set('resp_coleta', e.target.value)}>
               <option value="">Definir depois</option>
-              {EQUIPE.map((p) => (
-                <option key={p}>{p}</option>
+              {equipe.map((p) => (
+                <option key={p.id} value={p.nome}>{p.nome}</option>
               ))}
             </select>
           </Field>
+        </div>
+
+        <div className="fblock">
+          <label className="lbl">Fechamento</label>
+          <div className="fgrid">
+            <Field label="Entrega, instalação e chopeira (R$)">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={f.valor_entrega_coleta}
+                onChange={(e) => set('valor_entrega_coleta', e.target.value)}
+                placeholder="0,00"
+              />
+            </Field>
+            <Field label="Desconto (R$)">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={f.desconto}
+                onChange={(e) => set('desconto', e.target.value)}
+                placeholder="0,00"
+              />
+            </Field>
+          </div>
+
+          <div className="resumo">
+            <div className="resumoLinha">
+              <span>Chopp</span>
+              <b>{brl(subtotal)}</b>
+            </div>
+            <div className="resumoLinha">
+              <span>Entrega, instalação e chopeira</span>
+              <b>{brl(f.valor_entrega_coleta)}</b>
+            </div>
+            {Number(f.desconto) > 0 && (
+              <div className="resumoLinha desconto">
+                <span>Desconto</span>
+                <b>- {brl(f.desconto)}</b>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="formFoot">

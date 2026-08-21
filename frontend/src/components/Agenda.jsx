@@ -5,7 +5,8 @@ const brl = (n) =>
 
 const calcTotal = (o) =>
   (o.itens || []).reduce((s, it) => s + (Number(it.litros) || 0) * (Number(it.valor_litro) || 0), 0) +
-  (Number(o.valor_entrega_coleta) || 0);
+  (Number(o.valor_entrega_coleta) || 0) -
+  (Number(o.desconto) || 0);
 
 const totalLitros = (o) => (o.itens || []).reduce((s, it) => s + (Number(it.litros) || 0), 0);
 
@@ -15,7 +16,7 @@ const diaSemana = (s) => {
   return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][dt.getDay()];
 };
 
-export default function Agenda({ orders, onConfirm, onTogglePago }) {
+export default function Agenda({ orders, ehAdmin, onConfirm, onTogglePago }) {
   const sorted = [...orders].sort((a, b) => a.data_entrega.localeCompare(b.data_entrega));
   const pendentes = sorted.filter((o) => o.status === 'pendente').length;
 
@@ -73,7 +74,7 @@ export default function Agenda({ orders, onConfirm, onTogglePago }) {
                 <button className={`pgto ${o.pago ? 'ok' : 'no'}`} onClick={() => onTogglePago(o.id)}>
                   {o.pago ? 'Pago' : 'A receber'}
                 </button>
-                {o.status === 'pendente' && (
+                {o.status === 'pendente' && ehAdmin && (
                   <button className="confirm" onClick={() => onConfirm(o.id)}>
                     Confirmar
                   </button>
@@ -81,7 +82,11 @@ export default function Agenda({ orders, onConfirm, onTogglePago }) {
               </div>
             </div>
             {o.status === 'pendente' && (
-              <p className="hint">Ao confirmar, o sistema real cria o evento no Google Agenda com lembretes (2 dias / 1 dia / no dia) pros responsáveis.</p>
+              <p className="hint">
+                {ehAdmin
+                  ? 'Ao confirmar, o sistema cria o evento no Google Agenda com os lembretes definidos em Configurações.'
+                  : 'Aguardando um administrador confirmar.'}
+              </p>
             )}
           </article>
         ))}

@@ -7,6 +7,7 @@ import {
   confirmPedido,
   deletePedido,
 } from '../controllers/pedidosController.js';
+import { exigirAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -22,10 +23,10 @@ router.post('/', createPedido);
 // PATCH /api/pedidos/:id - Atualizar pedido
 router.patch('/:id', updatePedido);
 
-// POST /api/pedidos/:id/confirmar - Confirmar pedido
-router.post('/:id/confirmar', confirmPedido);
+// POST /api/pedidos/:id/confirmar - Confirmar pedido (só admin: ocupa a frota e dispara o aviso)
+router.post('/:id/confirmar', exigirAdmin, confirmPedido);
 
-// DELETE /api/pedidos/:id - Deletar pedido
-router.delete('/:id', deletePedido);
+// DELETE /api/pedidos/:id - Deletar pedido (só admin)
+router.delete('/:id', exigirAdmin, deletePedido);
 
 export default router;
