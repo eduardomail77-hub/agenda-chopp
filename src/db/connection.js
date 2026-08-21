@@ -5,11 +5,16 @@ dotenv.config();
 
 const { Pool } = pg;
 
-console.log('DATABASE_URL:', process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'undefined');
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  console.error('DATABASE_URL não está configurada');
+}
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+const poolConfig = databaseUrl ?
+  { connectionString: databaseUrl } :
+  { host: 'localhost', port: 5432, database: 'test', user: 'postgres', password: 'test' };
+
+const pool = new Pool(poolConfig);
 
 pool.on('error', (err) => {
   console.error('Erro no pool de conexões:', err);
