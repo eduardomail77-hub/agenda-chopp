@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import pedidosRoutes from './routes/pedidos.js';
 import recursosRoutes from './routes/recursos.js';
 import publicoRoutes from './routes/publico.js';
+import adminRoutes from './routes/admin.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use('/api/pedidos', pedidosRoutes);
 app.use('/api/recursos', recursosRoutes);
 app.use('/api/publico', publicoRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
