@@ -7,6 +7,7 @@ import NovoPedido from './components/NovoPedido';
 import Pendentes from './components/Pendentes';
 import Configuracoes from './components/Configuracoes';
 import EditarPedido from './components/EditarPedido';
+import Cotacoes from './components/Cotacoes';
 
 export default function App() {
   const [usuario, setUsuario] = useState(getUsuarioSalvo());
@@ -91,6 +92,7 @@ export default function App() {
 
   const abas = [
     ['agenda', 'Agenda'],
+    ['cotacoes', 'Cotações'],
     ['pendentes', 'Pendentes'],
     ['disp', 'Disponibilidade'],
     ['novo', 'Novo pedido'],
@@ -156,6 +158,15 @@ export default function App() {
           )}
           {tab === 'disp' && (
             <Disponibilidade data={dispData} setData={setDispData} orders={orders} />
+          )}
+          {tab === 'cotacoes' && (
+            <Cotacoes
+              ehAdmin={ehAdmin}
+              onConvertida={async () => {
+                await loadPedidos();
+                setTab('pendentes');
+              }}
+            />
           )}
           {tab === 'novo' && <NovoPedido orders={orders} onSave={handleSaveNew} />}
           {tab === 'config' && <Configuracoes usuario={usuario} />}

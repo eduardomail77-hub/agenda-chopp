@@ -122,3 +122,14 @@ export const atualizarChopeira = (id, data) =>
   req(`/config/chopeiras/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
 export const getStatusGoogle = () => req('/config/google/status');
+
+/* ---------- Cotações ---------- */
+
+export const getCotacoes = (status) =>
+  req(`/cotacoes${status ? `?status=${status}` : ''}`);
+
+export const atualizarCotacao = (id, data) =>
+  req(`/cotacoes/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const converterCotacao = (id, data) =>
+  req(`/cotacoes/${id}/converter`, { method: 'POST', body: JSON.stringify(data) });

@@ -4,6 +4,8 @@ import authRoutes from './routes/auth.js';
 import configRoutes from './routes/config.js';
 import pedidosRoutes from './routes/pedidos.js';
 import recursosRoutes from './routes/recursos.js';
+import publicoRoutes from './routes/publico.js';
+import cotacoesRoutes from './routes/cotacoes.js';
 import { exigirLogin } from './middleware/auth.js';
 import { initializeDatabase } from './db/init.js';
 
@@ -18,10 +20,14 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Aberta na internet: é o link de cotação que vai para o cliente
+app.use('/api/publico', publicoRoutes);
+
 app.use('/api/auth', authRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/pedidos', exigirLogin, pedidosRoutes);
 app.use('/api/recursos', exigirLogin, recursosRoutes);
+app.use('/api/cotacoes', exigirLogin, cotacoesRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ erro: 'Rota não encontrada' });

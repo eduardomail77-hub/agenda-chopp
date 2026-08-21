@@ -259,6 +259,65 @@ export async function removerAcessoCalendario(email) {
 }
 
 /**
+ * Avisa a equipe que entrou cotação nova.
+ *
+ * Vira um evento curto começando agora, com lembrete em zero minuto: o Google
+ * dispara a notificação na hora, no celular de quem enxerga o calendário. É o
+ * jeito de avisar sem custo por mensagem, já que WhatsApp API é cobrado.
+ */
+export async function avisarCotacaoNova(cotacao) {
+  const calendarId = await garantirCalendario();
+
+  const agora = new Date();
+  const fim = new Date(agora.getTime() + 15 * 60 * 1000);
+  const cervejas =
+    cotacao.itens?.map((i) => `${i.cerveja}${i.litros ? ` (${Number(i.litros)}L)` : ''}`).join(', ') ||
+    'não informado';
+
+  const tipo = {
+    eletrica: 'Elétrica (tem 220V no local)',
+    gelo: 'Gelo (sem energia)',
+    indiferente: 'Sem preferência',
+  }[cotacao.tipo_chopeira] || 'Sem preferência';
+
+  const descricao = [
+    `Cotação #${cotacao.id}`,
+    '',
+    `Cliente: ${cotacao.cliente}`,
+    `Telefone: ${cotacao.telefone}`,
+    `Endereço: ${cotacao.endereco || 'não informado'}`,
+    cotacao.pessoas ? `Pessoas: ${cotacao.pessoas}` : null,
+    '',
+    `Cervejas: ${cervejas}`,
+    `Chopeira: ${tipo}`,
+    '',
+    `Entrega: ${soData(cotacao.data_entrega).split('-').reverse().join('/')}${cotacao.hora_entrega ? ` às ${String(cotacao.hora_entrega).slice(0, 5)}` : ''}`,
+    cotacao.data_coleta
+      ? `Recolhimento: ${soData(cotacao.data_coleta).split('-').reverse().join('/')}${cotacao.hora_coleta ? ` às ${String(cotacao.hora_coleta).slice(0, 5)}` : ''}`
+      : 'Recolhimento: a combinar',
+    cotacao.observacoes ? `\nObservações: ${cotacao.observacoes}` : null,
+    '',
+    'Responda pela aba Cotações no sistema.',
+  ]
+    .filter((l) => l !== null)
+    .join('\n');
+
+  const { data } = await calendar.events.insert({
+    calendarId,
+    requestBody: {
+      summary: `Cotação nova · ${cotacao.cliente}`,
+      description: descricao,
+      start: { dateTime: agora.toISOString(), timeZone: FUSO },
+      end: { dateTime: fim.toISOString(), timeZone: FUSO },
+      reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 0 }] },
+    },
+  });
+
+  console.log('Aviso de cotação criado na agenda:', data.id);
+  return data.id;
+}
+
+/**
  * Garante que todo mundo marcado para receber aviso enxergue o calendário.
  * Roda na subida do servidor porque uma pessoa pode ter sido cadastrada
  * enquanto o Google estava fora, ou antes do calendário existir.

@@ -92,6 +92,36 @@ async function migrate() {
       chopeira_id VARCHAR(20) NOT NULL REFERENCES chopeiras(id)
     );
 
+    CREATE TABLE IF NOT EXISTS cotacoes (
+      id SERIAL PRIMARY KEY,
+      cliente VARCHAR(255) NOT NULL,
+      telefone VARCHAR(30) NOT NULL,
+      endereco TEXT,
+      data_entrega DATE,
+      hora_entrega TIME,
+      data_coleta DATE,
+      hora_coleta TIME,
+      tipo_chopeira VARCHAR(30),
+      pessoas INTEGER,
+      observacoes TEXT,
+      status VARCHAR(30) NOT NULL DEFAULT 'nova',
+      valor_entrega_coleta NUMERIC(10,2),
+      desconto NUMERIC(10,2) DEFAULT 0,
+      resposta_em TIMESTAMP,
+      pedido_id INTEGER REFERENCES pedidos(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS cotacao_itens (
+      id SERIAL PRIMARY KEY,
+      cotacao_id INTEGER NOT NULL REFERENCES cotacoes(id) ON DELETE CASCADE,
+      cerveja VARCHAR(255) NOT NULL,
+      litros NUMERIC(10,2),
+      valor_litro NUMERIC(10,2)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_cotacoes_status ON cotacoes(status);
+    CREATE INDEX IF NOT EXISTS idx_cotacao_itens_cotacao ON cotacao_itens(cotacao_id);
     CREATE INDEX IF NOT EXISTS idx_pedidos_data ON pedidos(data_entrega);
     CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status);
     CREATE INDEX IF NOT EXISTS idx_pedido_itens_pedido ON pedido_itens(pedido_id);

@@ -1211,3 +1211,245 @@ button.editar:hover {
     padding-right: 16px;
   }
 }
+
+/* ============ Página pública de cotação ============ */
+
+.cotacaoWrap {
+  min-height: 100vh;
+  padding: 32px 16px;
+  display: flex;
+  justify-content: center;
+  background: var(--bg-dark);
+}
+
+.cotacaoCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 32px;
+  width: 100%;
+  max-width: 620px;
+  height: fit-content;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.cotacaoTopo {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding-bottom: 20px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cotacaoTopo h1 {
+  margin: 0 0 6px;
+  font-size: 21px;
+  line-height: 1.25;
+}
+
+.cotacaoTopo p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.mark.grande {
+  font-size: 26px;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-gold);
+  color: #fff;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.cotacaoBloco {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cotacaoBloco h2 {
+  margin: 0 0 14px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.cotacaoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0 14px;
+}
+
+.cotacaoItem {
+  display: grid;
+  grid-template-columns: 1fr 110px auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 10px;
+}
+
+.cotacaoItem .field {
+  margin-bottom: 0;
+}
+
+.cotacaoCard textarea {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-main);
+  width: 100%;
+  resize: vertical;
+}
+
+.cotacaoCard textarea:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+.tipoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.tipoOpcao {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+
+.tipoOpcao.on {
+  border-color: var(--accent-gold);
+  background: #eef2ff;
+}
+
+.tipoOpcao input {
+  display: none;
+}
+
+.tipoOpcao b {
+  font-size: 14px;
+}
+
+.tipoOpcao small {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.btn-primary.grande {
+  width: 100%;
+  padding: 15px;
+  font-size: 15px;
+  margin-top: 22px;
+}
+
+.cotacaoRodape {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 12px 0 0;
+  line-height: 1.5;
+}
+
+.cotacaoCard.sucesso {
+  text-align: center;
+  padding: 44px 32px;
+}
+
+.cotacaoCard.sucesso .mark.grande {
+  margin: 0 auto 20px;
+}
+
+.cotacaoCard.sucesso h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.cotacaoCard.sucesso p {
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.protocolo {
+  display: inline-block;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-weight: 700;
+  color: var(--text-main) !important;
+  font-size: 13px;
+}
+
+.assinatura {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 22px !important;
+}
+
+/* Resumo do que o cliente pediu, na tela interna */
+.resumoPedido {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.resumoPedido p {
+  margin: 0 0 6px;
+}
+
+.resumoPedido p:last-child {
+  margin-bottom: 0;
+}
+
+.resumoLinha.totalLinha {
+  border-top: 1px solid var(--border-light);
+  margin-top: 6px;
+  padding-top: 10px;
+  font-size: 15px;
+}
+
+.resumoLinha.totalLinha b {
+  font-size: 17px;
+}
+
+@media (max-width: 640px) {
+  .cotacaoWrap {
+    padding: 0;
+  }
+
+  .cotacaoCard {
+    border-radius: 0;
+    border: none;
+    padding: 24px 16px 40px;
+    min-height: 100vh;
+    max-width: none;
+  }
+
+  .cotacaoItem {
+    grid-template-columns: 1fr 90px auto;
+  }
+}
