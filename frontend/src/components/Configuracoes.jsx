@@ -500,6 +500,7 @@ function Catalogo({ ehAdmin }) {
   const [ok, setOk] = useState(null);
   const [novaCerveja, setNovaCerveja] = useState({ nome: '', estilo: '', abv: '', ibu: '', preco_litro: '' });
   const [novaChopeira, setNovaChopeira] = useState({ id: '', tipo: 'Elétrica', vias: 1, vazao: '' });
+  const [editandoCerveja, setEditandoCerveja] = useState(null);
 
   useEffect(() => { carregar(); }, []);
 
@@ -541,7 +542,10 @@ function Catalogo({ ehAdmin }) {
         <Aviso erro={erro} ok={ok} />
 
         <div className="tabela">
-          <div className="tabela-head"><span>Rótulo</span><span>Estilo</span><span>ABV</span><span>IBU</span><span>Ativo</span></div>
+          <div className="tabela-head">
+            <span>Rótulo</span><span>Estilo</span><span>ABV</span><span>IBU</span>
+            <span>Ativo</span><span></span>
+          </div>
           {cervejas.map((c) => (
             <div className="tabela-row" key={c.id}>
               <span data-label="Rótulo"><strong>{c.nome}</strong></span>
@@ -552,9 +556,26 @@ function Catalogo({ ehAdmin }) {
                 <input type="checkbox" checked={c.ativo} disabled={!ehAdmin}
                   onChange={async () => { await atualizarCerveja(c.id, { ativo: !c.ativo }); carregar(); }} />
               </span>
+              <span data-label="">
+                {ehAdmin && (
+                  <button className="editar" onClick={() => setEditandoCerveja(c)}>Editar</button>
+                )}
+              </span>
             </div>
           ))}
         </div>
+
+        {editandoCerveja && (
+          <EditarCerveja
+            cerveja={editandoCerveja}
+            onFechar={() => setEditandoCerveja(null)}
+            onSalvo={() => {
+              setEditandoCerveja(null);
+              setOk('Cerveja atualizada. Vale para a cotação e para os novos pedidos.');
+              carregar();
+            }}
+          />
+        )}
 
         {ehAdmin && (
           <form className="form-inline" onSubmit={addCerveja}>
@@ -628,6 +649,106 @@ function Catalogo({ ehAdmin }) {
         )}
       </section>
     </>
+  );
+}
+
+function EditarCerveja({ cerveja, onFechar, onSalvo }) {
+  const [f, setF] = useState({
+    nome: cerveja.nome || '',
+    estilo: cerveja.estilo || '',
+    abv: cerveja.abv ?? '',
+    ibu: cerveja.ibu ?? '',
+    preco_litro: cerveja.preco_litro ?? '',
+    ordem: cerveja.ordem ?? 99,
+  });
+  const [erro, setErro] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    const aoTeclar = (e) => e.key === 'Escape' && onFechar();
+    window.addEventListener('keydown', aoTeclar);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', aoTeclar);
+      document.body.style.overflow = '';
+    };
+  }, [onFechar]);
+
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+
+  async function salvar(e) {
+    e.preventDefault();
+    setErro(null);
+    setSalvando(true);
+    try {
+      await atualizarCerveja(cerveja.id, {
+        nome: f.nome,
+        estilo: f.estilo,
+        abv: f.abv === '' ? null : Number(f.abv),
+        ibu: f.ibu === '' ? null : Number(f.ibu),
+        preco_litro: f.preco_litro === '' ? null : Number(f.preco_litro),
+        ordem: Number(f.ordem) || 99,
+      });
+      onSalvo();
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="modalFundo" onClick={onFechar}>
+      <div className="modalCaixa estreita" onClick={(e) => e.stopPropagation()}>
+        <div className="modalTopo">
+          <div>
+            <h2>Editar cerveja</h2>
+            <p className="hint" style={{ margin: 0 }}>{cerveja.nome}</p>
+          </div>
+          <button className="modalFechar" onClick={onFechar} title="Fechar">✕</button>
+        </div>
+
+        <form className="form" onSubmit={salvar}>
+          {erro && <div className="error">{erro}</div>}
+
+          <label className="field"><span>Rótulo</span>
+            <input value={f.nome} onChange={(e) => set('nome', e.target.value)} required />
+          </label>
+
+          <label className="field"><span>Estilo</span>
+            <input value={f.estilo} onChange={(e) => set('estilo', e.target.value)} placeholder="Pilsen, Session IPA..." />
+          </label>
+
+          <div className="grid-form">
+            <label className="field"><span>ABV %</span>
+              <input type="number" step="0.1" value={f.abv} onChange={(e) => set('abv', e.target.value)} />
+            </label>
+            <label className="field"><span>IBU</span>
+              <input type="number" value={f.ibu} onChange={(e) => set('ibu', e.target.value)} />
+            </label>
+            <label className="field"><span>R$ / litro</span>
+              <input type="number" step="0.01" min="0" value={f.preco_litro}
+                onChange={(e) => set('preco_litro', e.target.value)} />
+            </label>
+          </div>
+
+          <label className="field"><span>Posição na lista</span>
+            <input type="number" min="1" value={f.ordem} onChange={(e) => set('ordem', e.target.value)} />
+          </label>
+          <p className="hint" style={{ marginTop: '-8px' }}>
+            Menor número aparece primeiro, na cotação e no pedido. Use 1 para a mais vendida.
+            Quem tiver o mesmo número fica em ordem alfabética.
+          </p>
+
+          <div className="formFoot">
+            <button type="button" className="btn-sair" onClick={onFechar}>Cancelar</button>
+            <button type="submit" className="btn-primary" disabled={salvando}>
+              {salvando ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 

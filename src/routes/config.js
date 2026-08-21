@@ -269,7 +269,7 @@ router.post('/cervejas', exigirAdmin, async (req, res) => {
 
 router.put('/cervejas/:id', exigirAdmin, async (req, res) => {
   try {
-    const { nome, estilo, abv, ibu, preco_litro, ativo } = req.body;
+    const { nome, estilo, abv, ibu, preco_litro, ativo, ordem } = req.body;
     const { rows } = await query(
       `UPDATE cervejas SET
          nome = COALESCE($1, nome),
@@ -277,9 +277,13 @@ router.put('/cervejas/:id', exigirAdmin, async (req, res) => {
          abv = COALESCE($3, abv),
          ibu = COALESCE($4, ibu),
          preco_litro = COALESCE($5, preco_litro),
-         ativo = COALESCE($6, ativo)
-       WHERE id = $7 RETURNING *`,
-      [nome ?? null, estilo ?? null, abv ?? null, ibu ?? null, preco_litro ?? null, ativo ?? null, req.params.id]
+         ativo = COALESCE($6, ativo),
+         ordem = COALESCE($7, ordem)
+       WHERE id = $8 RETURNING *`,
+      [
+        nome ?? null, estilo ?? null, abv ?? null, ibu ?? null,
+        preco_litro ?? null, ativo ?? null, ordem ?? null, req.params.id,
+      ]
     );
     if (rows.length === 0) return res.status(404).json({ erro: 'Cerveja não encontrada' });
     res.json(rows[0]);

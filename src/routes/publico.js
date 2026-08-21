@@ -42,7 +42,7 @@ function limitarEnvios(req, res, next) {
 router.get('/catalogo', async (req, res) => {
   try {
     const { rows } = await query(
-      'SELECT nome, estilo, abv, ibu FROM cervejas WHERE ativo = true ORDER BY nome ASC'
+      'SELECT nome, estilo, abv, ibu FROM cervejas WHERE ativo = true ORDER BY ordem ASC, nome ASC'
     );
     res.json({ cervejas: rows });
   } catch (err) {

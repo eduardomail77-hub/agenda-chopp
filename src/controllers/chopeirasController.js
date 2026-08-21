@@ -44,8 +44,9 @@ export async function getChopeirasDisponiveisPorData(req, res) {
 
 export async function getCervejas(req, res) {
   try {
+    // Ordem de venda primeiro, alfabética como desempate
     const result = await query(
-      'SELECT * FROM cervejas ORDER BY nome ASC'
+      'SELECT * FROM cervejas ORDER BY ordem ASC, nome ASC'
     );
     res.json(result.rows);
   } catch (err) {

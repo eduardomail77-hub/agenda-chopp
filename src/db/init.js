@@ -18,6 +18,14 @@ async function waitForDatabase(maxRetries = 30) {
   throw new Error('Não foi possível conectar ao banco de dados');
 }
 
+/** As quatro mais vendidas abrem a lista; o resto vem depois, em ordem alfabética. */
+const ORDEM_INICIAL = {
+  Predileta: 1,
+  Sunset: 2,
+  'Five Hops': 3,
+  'Dois Mundos': 4,
+};
+
 async function migrate() {
   console.log('🚀 Executando migrações...');
 
@@ -142,6 +150,9 @@ async function migrate() {
 
     -- Impressão do que já foi publicado na agenda, para não reescrever evento à toa
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS evento_hash VARCHAR(64);
+
+    -- As listas seguem a ordem de venda, não a alfabética
+    ALTER TABLE cervejas ADD COLUMN IF NOT EXISTS ordem INTEGER DEFAULT 99;
   `);
 
   // Eventos antigos ficavam num campo só; passam a ser o evento de entrega
@@ -149,6 +160,16 @@ async function migrate() {
     UPDATE pedidos SET google_event_entrega = google_event_id
     WHERE google_event_id IS NOT NULL AND google_event_entrega IS NULL
   `);
+
+  // A Predileta é vendida como Pilsen, o seed original trouxe Cream Ale
+  await query(
+    "UPDATE cervejas SET estilo = 'Pilsen' WHERE nome = 'Predileta' AND estilo = 'Cream Ale'"
+  );
+
+  // Ordem das mais vendidas, só na primeira vez. Depois quem manda é a tela.
+  for (const [nome, ordem] of Object.entries(ORDEM_INICIAL)) {
+    await query('UPDATE cervejas SET ordem = $1 WHERE nome = $2 AND ordem = 99', [ordem, nome]);
+  }
 
   // Pedido sem data de coleta recolhe no dia seguinte à entrega
   await query(`
@@ -175,7 +196,7 @@ const CHOPEIRAS = [
 ];
 
 const CERVEJAS = [
-  { nome: 'Predileta', estilo: 'Cream Ale', abv: 4.5, ibu: 10 },
+  { nome: 'Predileta', estilo: 'Pilsen', abv: 4.5, ibu: 10 },
   { nome: 'Old Barn', estilo: 'Weissbier', abv: 5.5, ibu: 15 },
   { nome: 'Sunset', estilo: 'Session IPA', abv: 4.2, ibu: 37 },
   { nome: 'Prohibition', estilo: 'Brown Ale', abv: 4.7, ibu: 23 },
