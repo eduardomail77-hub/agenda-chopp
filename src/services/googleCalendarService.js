@@ -357,11 +357,10 @@ export async function avisarCotacaoNova(cotacao) {
 export async function sincronizarAcessos() {
   try {
     const { rows } = await query(
-      `SELECT COALESCE(NULLIF(email_google, ''), email) AS conta
-       FROM usuarios WHERE ativo = true AND recebe_aviso = true`
+      'SELECT email FROM usuarios WHERE ativo = true AND recebe_aviso = true'
     );
-    for (const { conta } of rows) {
-      await compartilharCalendario(conta);
+    for (const { email } of rows) {
+      await compartilharCalendario(email);
     }
     if (rows.length) console.log(`✓ Acesso ao calendário conferido para ${rows.length} pessoa(s)`);
   } catch (err) {

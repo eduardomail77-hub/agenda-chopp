@@ -22,13 +22,10 @@ router.get('/google/status', async (req, res) => {
 
 /* ---------- Equipe ---------- */
 
-/** Conta que recebe os lembretes: a do Google quando informada, senão a de login. */
-const contaDoCalendario = (u) => (u.email_google || u.email || '').toLowerCase().trim();
-
 router.get('/usuarios', async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, nome, email, email_google, telefone, perfil, recebe_aviso, ativo
+      `SELECT id, nome, email, telefone, perfil, recebe_aviso, ativo
        FROM usuarios ORDER BY nome ASC`
     );
 
@@ -39,9 +36,8 @@ router.get('/usuarios', async (req, res) => {
     res.json(
       rows.map((u) => ({
         ...u,
-        conta_calendario: contaDoCalendario(u),
         acesso_calendario:
-          comAcesso === null ? null : comAcesso.includes(contaDoCalendario(u)),
+          comAcesso === null ? null : comAcesso.includes(u.email.toLowerCase()),
       }))
     );
   } catch (err) {
@@ -53,13 +49,10 @@ router.get('/usuarios', async (req, res) => {
 /** Reenvia o convite do calendário para alguém que ficou de fora. */
 router.post('/usuarios/:id/convite-calendario', exigirAdmin, async (req, res) => {
   try {
-    const { rows } = await query(
-      'SELECT email, email_google FROM usuarios WHERE id = $1',
-      [req.params.id]
-    );
+    const { rows } = await query('SELECT email FROM usuarios WHERE id = $1', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado' });
 
-    const conta = contaDoCalendario(rows[0]);
+    const conta = rows[0].email.toLowerCase();
     await compartilharCalendario(conta);
 
     const comAcesso = await listarAcessos();
@@ -79,10 +72,7 @@ router.post('/usuarios/:id/convite-calendario', exigirAdmin, async (req, res) =>
 
 router.post('/usuarios', exigirAdmin, async (req, res) => {
   try {
-    const {
-      nome, email, email_google, telefone, senha,
-      perfil = 'vendedor', recebe_aviso = true,
-    } = req.body;
+    const { nome, email, telefone, senha, perfil = 'vendedor', recebe_aviso = true } = req.body;
 
     if (!nome || !email || !senha) {
       return res.status(400).json({ erro: 'Nome, e-mail e senha são obrigatórios' });
@@ -96,22 +86,14 @@ router.post('/usuarios', exigirAdmin, async (req, res) => {
 
     const hash = await bcrypt.hash(senha, 10);
     const { rows } = await query(
-      `INSERT INTO usuarios (nome, email, email_google, telefone, senha_hash, perfil, recebe_aviso)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, nome, email, email_google, telefone, perfil, recebe_aviso, ativo`,
-      [
-        nome,
-        email.toLowerCase().trim(),
-        email_google?.trim() ? email_google.toLowerCase().trim() : null,
-        telefone || null,
-        hash,
-        perfil,
-        recebe_aviso,
-      ]
+      `INSERT INTO usuarios (nome, email, telefone, senha_hash, perfil, recebe_aviso)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, nome, email, telefone, perfil, recebe_aviso, ativo`,
+      [nome, email.toLowerCase().trim(), telefone || null, hash, perfil, recebe_aviso]
     );
 
     if (recebe_aviso) {
-      await compartilharCalendario(contaDoCalendario(rows[0]));
+      await compartilharCalendario(rows[0].email);
     }
 
     res.status(201).json(rows[0]);
@@ -127,7 +109,7 @@ router.post('/usuarios', exigirAdmin, async (req, res) => {
 router.put('/usuarios/:id', exigirAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, email, email_google, telefone, perfil, recebe_aviso, ativo, senha } = req.body;
+    const { nome, email, telefone, perfil, recebe_aviso, ativo, senha } = req.body;
 
     const atual = await query('SELECT * FROM usuarios WHERE id = $1', [id]);
     if (atual.rows.length === 0) {
@@ -162,26 +144,20 @@ router.put('/usuarios/:id', exigirAdmin, async (req, res) => {
       hash = await bcrypt.hash(senha, 10);
     }
 
-    const temCampo = (n) => Object.prototype.hasOwnProperty.call(req.body, n);
-    const normaliza = (v) => (v?.trim() ? v.toLowerCase().trim() : null);
-
     const { rows } = await query(
       `UPDATE usuarios SET
          nome = COALESCE($1, nome),
          email = COALESCE($2, email),
-         email_google = CASE WHEN $3::bool THEN $4 ELSE email_google END,
-         telefone = COALESCE($5, telefone),
-         perfil = COALESCE($6, perfil),
-         recebe_aviso = COALESCE($7, recebe_aviso),
-         ativo = COALESCE($8, ativo),
-         senha_hash = COALESCE($9, senha_hash)
-       WHERE id = $10
-       RETURNING id, nome, email, email_google, telefone, perfil, recebe_aviso, ativo`,
+         telefone = COALESCE($3, telefone),
+         perfil = COALESCE($4, perfil),
+         recebe_aviso = COALESCE($5, recebe_aviso),
+         ativo = COALESCE($6, ativo),
+         senha_hash = COALESCE($7, senha_hash)
+       WHERE id = $8
+       RETURNING id, nome, email, telefone, perfil, recebe_aviso, ativo`,
       [
         nome ?? null,
         email ? email.toLowerCase().trim() : null,
-        temCampo('email_google'),
-        normaliza(email_google),
         telefone ?? null,
         perfil ?? null,
         recebe_aviso ?? null,
@@ -192,19 +168,17 @@ router.put('/usuarios/:id', exigirAdmin, async (req, res) => {
     );
 
     const depois = rows[0];
-    const contaAntes = contaDoCalendario(antes);
-    const contaAgora = contaDoCalendario(depois);
 
-    // Trocar a conta do Google precisa tirar o acesso da antiga, senão
-    // o endereço errado continua enxergando a agenda da operação
-    if (contaAntes && contaAntes !== contaAgora) {
-      await removerAcessoCalendario(contaAntes);
+    // Trocar o e-mail precisa tirar o acesso do antigo, senão o endereço
+    // que saiu do cadastro continua enxergando a agenda da operação
+    if (antes.email !== depois.email) {
+      await removerAcessoCalendario(antes.email);
     }
 
     if (depois.recebe_aviso && depois.ativo) {
-      await compartilharCalendario(contaAgora);
+      await compartilharCalendario(depois.email);
     } else if (antes.recebe_aviso) {
-      await removerAcessoCalendario(contaAgora);
+      await removerAcessoCalendario(depois.email);
     }
 
     res.json(depois);

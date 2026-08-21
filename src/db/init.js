@@ -140,9 +140,6 @@ async function migrate() {
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS google_event_entrega VARCHAR(255);
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS google_event_coleta VARCHAR(255);
 
-    -- O e-mail de entrar no sistema nem sempre é a conta do Google Agenda do celular
-    ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_google VARCHAR(255);
-
     -- Impressão do que já foi publicado na agenda, para não reescrever evento à toa
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS evento_hash VARCHAR(64);
   `);

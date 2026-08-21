@@ -65,7 +65,7 @@ function Aviso({ erro, ok }) {
 /* ---------------- Equipe ---------------- */
 
 const NOVO_VAZIO = {
-  nome: '', email: '', email_google: '', telefone: '', senha: '',
+  nome: '', email: '', telefone: '', senha: '',
   perfil: 'vendedor', recebe_aviso: true,
 };
 
@@ -133,20 +133,13 @@ function Equipe({ ehAdmin }) {
 
       <div className="tabela">
         <div className="tabela-head">
-          <span>Nome</span><span>Acesso</span><span>Conta do Google</span><span>Perfil</span>
+          <span>Nome</span><span>E-mail do Google</span><span>Perfil</span>
           <span>Aviso</span><span>Calendário</span><span>Ativo</span><span></span>
         </div>
         {usuarios.map((u) => (
           <div className="tabela-row" key={u.id}>
             <span data-label="Nome">{u.nome}</span>
-            <span data-label="Acesso">{u.email}</span>
-            <span data-label="Conta do Google">
-              {u.email_google ? (
-                u.email_google
-              ) : (
-                <em className="miss">usa o de acesso</em>
-              )}
-            </span>
+            <span data-label="E-mail do Google">{u.email}</span>
             <span data-label="Perfil">
               <span className={u.perfil === 'admin' ? 'badge admin' : 'badge'}>{u.perfil}</span>
             </span>
@@ -200,16 +193,8 @@ function Equipe({ ehAdmin }) {
             <label className="field"><span>Nome</span>
               <input value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} required />
             </label>
-            <label className="field"><span>E-mail de acesso</span>
+            <label className="field"><span>E-mail do Google</span>
               <input type="email" value={novo.email} onChange={(e) => setNovo({ ...novo, email: e.target.value })} required />
-            </label>
-            <label className="field"><span>Conta do Google (se for outra)</span>
-              <input
-                type="email"
-                value={novo.email_google}
-                onChange={(e) => setNovo({ ...novo, email_google: e.target.value })}
-                placeholder="Deixe vazio para usar o de acesso"
-              />
             </label>
             <label className="field"><span>Telefone</span>
               <input value={novo.telefone} onChange={(e) => setNovo({ ...novo, telefone: e.target.value })} placeholder="(51) 9..." />
@@ -240,7 +225,6 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
   const [f, setF] = useState({
     nome: pessoa.nome || '',
     email: pessoa.email || '',
-    email_google: pessoa.email_google || '',
     telefone: pessoa.telefone || '',
     perfil: pessoa.perfil,
     senha: '',
@@ -268,7 +252,6 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
       const dados = {
         nome: f.nome,
         email: f.email,
-        email_google: f.email_google,
         telefone: f.telefone,
         perfil: f.perfil,
       };
@@ -277,13 +260,12 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
 
       await atualizarUsuario(pessoa.id, dados);
 
-      const trocouConta =
-        (f.email_google || f.email).toLowerCase().trim() !==
-        (pessoa.email_google || pessoa.email).toLowerCase().trim();
+      const novoEmail = f.email.toLowerCase().trim();
+      const trocouEmail = novoEmail !== pessoa.email.toLowerCase().trim();
 
       onSalvo(
-        trocouConta
-          ? `Dados salvos. O calendário foi compartilhado com ${(f.email_google || f.email).toLowerCase().trim()}.`
+        trocouEmail
+          ? `Dados salvos. O calendário foi compartilhado com ${novoEmail}, e o acesso do e-mail antigo foi removido.`
           : 'Dados salvos.'
       );
     } catch (err) {
@@ -311,24 +293,12 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
             <input value={f.nome} onChange={(e) => set('nome', e.target.value)} required />
           </label>
 
-          <label className="field"><span>E-mail de acesso</span>
+          <label className="field"><span>E-mail do Google</span>
             <input type="email" value={f.email} onChange={(e) => set('email', e.target.value)} required />
           </label>
           <p className="hint" style={{ marginTop: '-8px' }}>
-            É com este e-mail que a pessoa entra no sistema.
-          </p>
-
-          <label className="field"><span>Conta do Google</span>
-            <input
-              type="email"
-              value={f.email_google}
-              onChange={(e) => set('email_google', e.target.value)}
-              placeholder="Deixe vazio para usar o e-mail de acesso"
-            />
-          </label>
-          <p className="hint" style={{ marginTop: '-8px' }}>
-            É nesta conta que o calendário é compartilhado e onde os lembretes tocam.
-            Preencha quando o Google Agenda do celular for outro endereço.
+            É com este e-mail que a pessoa entra no sistema e é nele que o calendário
+            é compartilhado. Use a conta do Google que ela abre no celular.
           </p>
 
           <label className="field"><span>Telefone</span>
