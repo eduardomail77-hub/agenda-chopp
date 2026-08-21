@@ -10,8 +10,54 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const calendar = google.calendar({ version: 'v3', auth });
-const calendarId = () => process.env.GOOGLE_CALENDAR_ID;
 const FUSO = 'America/Sao_Paulo';
+
+let idEmCache = null;
+
+/**
+ * Devolve o calendário que o sistema usa, criando um se preciso.
+ *
+ * Um calendário criado na conta pessoal de alguém é invisível para a service
+ * account, e foi isso que quebrou a integração antes. Aqui a própria service
+ * account cria e vira dona do calendário, o que permite lançar evento e dar
+ * acesso à equipe sem depender de configuração manual no Google.
+ */
+async function garantirCalendario() {
+  if (idEmCache) return idEmCache;
+
+  const candidatos = [];
+  try {
+    const { rows } = await query("SELECT valor FROM configuracoes WHERE chave = 'google_calendar_id'");
+    if (rows[0]?.valor) candidatos.push(rows[0].valor);
+  } catch {
+    // banco ainda subindo, segue para o env
+  }
+  if (process.env.GOOGLE_CALENDAR_ID) candidatos.push(process.env.GOOGLE_CALENDAR_ID);
+
+  for (const id of candidatos) {
+    try {
+      await calendar.calendars.get({ calendarId: id });
+      idEmCache = id;
+      return id;
+    } catch {
+      // não acessível, tenta o próximo
+    }
+  }
+
+  const { data } = await calendar.calendars.insert({
+    requestBody: { summary: 'Agenda de Chopp · Fora da Lei', timeZone: FUSO },
+  });
+
+  await query(
+    `INSERT INTO configuracoes (chave, valor) VALUES ('google_calendar_id', $1)
+     ON CONFLICT (chave) DO UPDATE SET valor = $1, updated_at = CURRENT_TIMESTAMP`,
+    [data.id]
+  );
+
+  console.log('Calendário criado pelo sistema:', data.id);
+  idEmCache = data.id;
+  return data.id;
+}
 
 const soData = (valor) =>
   valor instanceof Date ? valor.toISOString().split('T')[0] : String(valor).split('T')[0];
@@ -109,20 +155,17 @@ async function montarEvento(pedido, etapa) {
  * Devolve os ids para o pedido guardar.
  */
 export async function createGoogleCalendarEvent(pedido) {
-  if (!calendarId()) {
-    console.warn('GOOGLE_CALENDAR_ID não configurado, pulando criação de evento');
-    return { entrega: null, coleta: null };
-  }
+  const calendarId = await garantirCalendario();
 
   const entrega = await calendar.events.insert({
-    calendarId: calendarId(),
+    calendarId,
     requestBody: await montarEvento(pedido, 'entrega'),
   });
 
   let coletaId = null;
   if (pedido.data_coleta) {
     const coleta = await calendar.events.insert({
-      calendarId: calendarId(),
+      calendarId,
       requestBody: await montarEvento(pedido, 'coleta'),
     });
     coletaId = coleta.data.id;
@@ -133,14 +176,14 @@ export async function createGoogleCalendarEvent(pedido) {
 }
 
 export async function updateGoogleCalendarEvent(pedido) {
-  if (!calendarId()) return { entrega: null, coleta: null };
+  const calendarId = await garantirCalendario();
 
-  let entregaId = pedido.google_event_entrega;
+  const entregaId = pedido.google_event_entrega;
   let coletaId = pedido.google_event_coleta;
 
   if (entregaId) {
     await calendar.events.update({
-      calendarId: calendarId(),
+      calendarId,
       eventId: entregaId,
       requestBody: await montarEvento(pedido, 'entrega'),
     });
@@ -149,14 +192,14 @@ export async function updateGoogleCalendarEvent(pedido) {
   if (pedido.data_coleta) {
     if (coletaId) {
       await calendar.events.update({
-        calendarId: calendarId(),
+        calendarId,
         eventId: coletaId,
         requestBody: await montarEvento(pedido, 'coleta'),
       });
     } else {
       // Data de recolhimento preenchida depois da confirmação
       const novo = await calendar.events.insert({
-        calendarId: calendarId(),
+        calendarId,
         requestBody: await montarEvento(pedido, 'coleta'),
       });
       coletaId = novo.data.id;
@@ -167,10 +210,10 @@ export async function updateGoogleCalendarEvent(pedido) {
 }
 
 export async function deleteGoogleCalendarEvent(eventId) {
-  if (!eventId || !calendarId()) return;
+  if (!eventId) return;
 
   try {
-    await calendar.events.delete({ calendarId: calendarId(), eventId });
+    await calendar.events.delete({ calendarId: await garantirCalendario(), eventId });
   } catch (err) {
     // Evento removido na mão não deve derrubar a exclusão do pedido
     if (err.code === 404 || err.code === 410) return;
@@ -184,11 +227,11 @@ export async function deleteGoogleCalendarEvent(eventId) {
  * o calendário no app do Google Agenda e recebe os lembretes dos eventos.
  */
 export async function compartilharCalendario(email) {
-  if (!calendarId() || !email) return;
+  if (!email) return;
 
   try {
     await calendar.acl.insert({
-      calendarId: calendarId(),
+      calendarId: await garantirCalendario(),
       requestBody: { role: 'reader', scope: { type: 'user', value: email } },
       sendNotifications: true,
     });
@@ -200,10 +243,13 @@ export async function compartilharCalendario(email) {
 }
 
 export async function removerAcessoCalendario(email) {
-  if (!calendarId() || !email) return;
+  if (!email) return;
 
   try {
-    await calendar.acl.delete({ calendarId: calendarId(), ruleId: `user:${email}` });
+    await calendar.acl.delete({
+      calendarId: await garantirCalendario(),
+      ruleId: `user:${email}`,
+    });
     console.log('Acesso ao calendário removido de', email);
   } catch (err) {
     if (err.code === 404) return;
@@ -216,13 +262,11 @@ export async function testarConexao() {
   if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
     return { ok: false, erro: 'Credenciais do Google não configuradas' };
   }
-  if (!calendarId()) {
-    return { ok: false, erro: 'GOOGLE_CALENDAR_ID não configurado' };
-  }
 
   try {
-    const { data } = await calendar.calendars.get({ calendarId: calendarId() });
-    return { ok: true, calendario: data.summary };
+    const calendarId = await garantirCalendario();
+    const { data } = await calendar.calendars.get({ calendarId });
+    return { ok: true, calendario: data.summary, calendarId };
   } catch (err) {
     return { ok: false, erro: err.message };
   }
