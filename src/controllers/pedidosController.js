@@ -3,51 +3,11 @@ import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalen
 
 export async function getPedidos(req, res) {
   try {
-    const { status, data_inicio, data_fim } = req.query;
-
-    let sql = 'SELECT * FROM pedidos';
-    const params = [];
-    const conditions = [];
-
-    if (status) {
-      conditions.push(`status = $${params.length + 1}`);
-      params.push(status);
-    }
-
-    if (data_inicio) {
-      conditions.push(`data_entrega >= $${params.length + 1}`);
-      params.push(data_inicio);
-    }
-
-    if (data_fim) {
-      conditions.push(`data_entrega <= $${params.length + 1}`);
-      params.push(data_fim);
-    }
-
-    if (conditions.length > 0) {
-      sql += ` WHERE ${conditions.join(' AND ')}`;
-    }
-
-    sql += ' ORDER BY data_entrega ASC';
-
-    const result = await query(sql, params);
-
-    const pedidosComDetalhes = await Promise.all(
-      result.rows.map(async (pedido) => {
-        const itens = await query('SELECT * FROM pedido_itens WHERE pedido_id = $1', [pedido.id]);
-        const chopeiras = await query('SELECT chopeira_id FROM pedido_chopeiras WHERE pedido_id = $1', [pedido.id]);
-        return {
-          ...pedido,
-          itens: itens.rows,
-          chopeiras: chopeiras.rows.map(c => c.chopeira_id),
-        };
-      })
-    );
-
-    res.json(pedidosComDetalhes);
+    const result = await query('SELECT * FROM pedidos ORDER BY data_entrega ASC');
+    res.json(result.rows);
   } catch (err) {
-    console.error('Erro ao buscar pedidos:', err);
-    res.status(500).json({ erro: 'Erro ao buscar pedidos' });
+    console.error('Erro ao buscar pedidos:', err.message, err.code);
+    res.status(500).json({ erro: 'Erro ao buscar pedidos', message: err.message });
   }
 }
 
