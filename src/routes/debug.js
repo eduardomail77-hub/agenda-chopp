@@ -30,4 +30,8 @@ router.get('/pedidos-simples', async (req, res) => {
   }
 });
 
+router.get('/simple', (req, res) => {
+  res.json({ ok: true, message: 'Backend is working' });
+});
+
 export default router;
