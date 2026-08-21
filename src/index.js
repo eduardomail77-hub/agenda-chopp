@@ -5,6 +5,7 @@ import pedidosRoutes from './routes/pedidos.js';
 import recursosRoutes from './routes/recursos.js';
 import publicoRoutes from './routes/publico.js';
 import adminRoutes from './routes/admin.js';
+import { initializeDatabase } from './db/init.js';
 
 dotenv.config();
 
@@ -37,8 +38,18 @@ app.use((err, req, res, next) => {
   res.status(500).json({ erro: 'Erro interno do servidor' });
 });
 
-app.listen(PORT, () => {
+let initialized = false;
+
+app.listen(PORT, async () => {
   console.log(`✓ Servidor rodando em http://localhost:${PORT}`);
   console.log(`✓ Health check: http://localhost:${PORT}/health`);
-  console.log(`✓ DATABASE_URL: ${process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'não configurada'}`);
+
+  if (!initialized && process.env.NODE_ENV === 'production') {
+    initialized = true;
+    try {
+      await initializeDatabase();
+    } catch (err) {
+      console.error('✗ Erro na inicialização:', err.message);
+    }
+  }
 });
