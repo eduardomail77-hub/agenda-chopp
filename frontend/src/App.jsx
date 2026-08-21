@@ -90,9 +90,10 @@ export default function App() {
     return <Login onEntrar={setUsuario} />;
   }
 
+  // Cotação envolve preço e negociação, então fica só com o administrador
   const abas = [
     ['agenda', 'Agenda'],
-    ['cotacoes', 'Cotações'],
+    ...(ehAdmin ? [['cotacoes', 'Cotações']] : []),
     ['pendentes', 'Pendentes'],
     ['disp', 'Disponibilidade'],
     ['novo', 'Novo pedido'],
@@ -159,7 +160,7 @@ export default function App() {
           {tab === 'disp' && (
             <Disponibilidade data={dispData} setData={setDispData} orders={orders} />
           )}
-          {tab === 'cotacoes' && (
+          {tab === 'cotacoes' && ehAdmin && (
             <Cotacoes
               ehAdmin={ehAdmin}
               onConvertida={async () => {

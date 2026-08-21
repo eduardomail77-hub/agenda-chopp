@@ -1,7 +1,7 @@
 import express from 'express';
 import { query, transacao } from '../db/connection.js';
-import { exigirAdmin } from '../middleware/auth.js';
 
+// O acesso a estas rotas já é restrito a administrador em src/index.js
 const router = express.Router();
 
 const STATUS_VALIDOS = ['nova', 'respondida', 'convertida', 'perdida'];
@@ -118,7 +118,7 @@ router.patch('/:id', async (req, res) => {
  * Nasce pendente de propósito, a confirmação continua sendo o passo
  * que ocupa a frota e dispara os avisos.
  */
-router.post('/:id/converter', exigirAdmin, async (req, res) => {
+router.post('/:id/converter', async (req, res) => {
   try {
     const { id } = req.params;
     const { chopeiras, resp_entrega, resp_coleta } = req.body;
