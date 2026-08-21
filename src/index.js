@@ -12,7 +12,36 @@ import { initializeDatabase } from './db/init.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+/**
+ * Só o site do chopp fala com esta API.
+ * Sem lista, qualquer página na internet poderia chamar as rotas usando o
+ * navegador de alguém já logado.
+ */
+const ORIGENS = [
+  'https://chopp.foradalei.com.br',
+  'https://frontend-tau-lilac-32.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Sem origin é chamada fora do navegador, como o health check do Railway
+      if (!origin) return callback(null, true);
+      if (ORIGENS.includes(origin)) return callback(null, true);
+
+      // Pré-visualizações do próprio projeto na Vercel
+      if (/^https:\/\/frontend-[a-z0-9-]+\.vercel\.app$/.test(origin)) {
+        return callback(null, true);
+      }
+
+      console.warn('Origem bloqueada pelo CORS:', origin);
+      return callback(new Error('Origem não autorizada'));
+    },
+  })
+);
+
 app.use(express.json());
 
 // Health check fica aberto para o Railway conseguir monitorar
