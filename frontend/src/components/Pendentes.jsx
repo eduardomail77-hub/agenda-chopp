@@ -37,7 +37,7 @@ const momento = (data, h, resp) => {
   return partes.join(' · ');
 };
 
-export default function Pendentes({ orders, ehAdmin, onRefresh }) {
+export default function Pendentes({ orders, ehAdmin, podeEditar, onEditar, onRefresh }) {
   const [confirmando, setConfirmando] = useState(null);
   const [editando, setEditando] = useState(null);
   const [erro, setErro] = useState(null);
@@ -141,8 +141,14 @@ export default function Pendentes({ orders, ehAdmin, onRefresh }) {
                 <span>Total</span>
                 <b>{brl(calcTotal(o))}</b>
               </div>
-              {ehAdmin && (
-                <div className="actions" style={{ display: 'flex', gap: '6px' }}>
+              <div className="actions" style={{ display: 'flex', gap: '6px' }}>
+                {podeEditar?.(o) && (
+                  <button className="editar" onClick={() => onEditar(o)}>
+                    Editar
+                  </button>
+                )}
+                {ehAdmin && (
+                  <>
                   <button
                     className="confirm"
                     onClick={() => handleConfirmar(o.id)}
@@ -165,8 +171,9 @@ export default function Pendentes({ orders, ehAdmin, onRefresh }) {
                   >
                     Rejeitar
                   </button>
-                </div>
-              )}
+                  </>
+                )}
+              </div>
             </div>
 
             <p className="hint">

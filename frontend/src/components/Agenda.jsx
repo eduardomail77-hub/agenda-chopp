@@ -36,7 +36,7 @@ const momento = (data, h, resp) => {
   return partes.join(' · ');
 };
 
-export default function Agenda({ orders, ehAdmin, onConfirm, onTogglePago }) {
+export default function Agenda({ orders, ehAdmin, podeEditar, onEditar, onConfirm, onTogglePago }) {
   const sorted = [...orders].sort((a, b) =>
     soData(a.data_entrega).localeCompare(soData(b.data_entrega))
   );
@@ -97,6 +97,11 @@ export default function Agenda({ orders, ehAdmin, onConfirm, onTogglePago }) {
                 <button className={`pgto ${o.pago ? 'ok' : 'no'}`} onClick={() => onTogglePago(o.id)}>
                   {o.pago ? 'Pago' : 'A receber'}
                 </button>
+                {podeEditar?.(o) && (
+                  <button className="editar" onClick={() => onEditar(o)}>
+                    Editar
+                  </button>
+                )}
                 {o.status === 'pendente' && ehAdmin && (
                   <button className="confirm" onClick={() => onConfirm(o.id)}>
                     Confirmar

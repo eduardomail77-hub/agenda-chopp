@@ -6,6 +6,7 @@ import Disponibilidade from './components/Disponibilidade';
 import NovoPedido from './components/NovoPedido';
 import Pendentes from './components/Pendentes';
 import Configuracoes from './components/Configuracoes';
+import EditarPedido from './components/EditarPedido';
 
 export default function App() {
   const [usuario, setUsuario] = useState(getUsuarioSalvo());
@@ -14,6 +15,7 @@ export default function App() {
   const [dispData, setDispData] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editando, setEditando] = useState(null);
 
   const ehAdmin = usuario?.perfil === 'admin';
 
@@ -66,6 +68,16 @@ export default function App() {
     await loadPedidos();
     setTab('agenda');
   }
+
+  async function handleSalvarEdicao(salvo) {
+    setEditando(null);
+    setError(salvo?.aviso || null);
+    await loadPedidos();
+  }
+
+  // Vendedor ajusta pedido pendente; depois de confirmado só admin mexe,
+  // porque a mudança repercute na agenda e na frota
+  const podeEditar = (pedido) => ehAdmin || pedido.status === 'pendente';
 
   function handleSair() {
     sair();
@@ -126,12 +138,21 @@ export default function App() {
             <Agenda
               orders={orders}
               ehAdmin={ehAdmin}
+              podeEditar={podeEditar}
+              onEditar={setEditando}
               onConfirm={handleConfirm}
               onTogglePago={handleTogglePago}
             />
           )}
           {tab === 'pendentes' && (
-            <Pendentes orders={orders} ehAdmin={ehAdmin} onConfirm={handleConfirm} onRefresh={loadPedidos} />
+            <Pendentes
+              orders={orders}
+              ehAdmin={ehAdmin}
+              podeEditar={podeEditar}
+              onEditar={setEditando}
+              onConfirm={handleConfirm}
+              onRefresh={loadPedidos}
+            />
           )}
           {tab === 'disp' && (
             <Disponibilidade data={dispData} setData={setDispData} orders={orders} />
@@ -139,6 +160,15 @@ export default function App() {
           {tab === 'novo' && <NovoPedido orders={orders} onSave={handleSaveNew} />}
           {tab === 'config' && <Configuracoes usuario={usuario} />}
         </>
+      )}
+
+      {editando && (
+        <EditarPedido
+          pedido={editando}
+          orders={orders}
+          onSalvo={handleSalvarEdicao}
+          onFechar={() => setEditando(null)}
+        />
       )}
     </div>
   );

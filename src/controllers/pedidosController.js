@@ -178,47 +178,58 @@ export async function updatePedido(req, res) {
       return res.status(404).json({ erro: 'Pedido não encontrado' });
     }
 
-    const entregaFinal = data_entrega ?? soData(atual.rows[0].data_entrega);
-    const coletaFinal = data_coleta ?? soData(atual.rows[0].data_coleta);
+    // Pedido confirmado já ocupa frota e tem evento na agenda, então só admin mexe.
+    // Baixar pagamento continua liberado, é rotina de quem está na rua.
+    if (atual.rows[0].status === 'confirmado' && req.usuario.perfil !== 'admin') {
+      const campos = Object.keys(req.body);
+      const soPagamento = campos.length > 0 && campos.every((c) => c === 'pago');
+      if (!soPagamento) {
+        return res.status(403).json({
+          erro: 'Pedido já confirmado, só um administrador pode alterar',
+        });
+      }
+    }
+
+    const temCampo = (nome) => Object.prototype.hasOwnProperty.call(req.body, nome);
+
+    const entregaFinal = temCampo('data_entrega')
+      ? data_entrega
+      : soData(atual.rows[0].data_entrega);
+    const coletaFinal = temCampo('data_coleta') ? data_coleta : soData(atual.rows[0].data_coleta);
     if (coletaFinal && entregaFinal && coletaFinal < entregaFinal) {
       return res.status(400).json({ erro: 'O recolhimento não pode ser antes da entrega' });
     }
+    if (temCampo('data_entrega') && !data_entrega) {
+      return res.status(400).json({ erro: 'A data de entrega é obrigatória' });
+    }
+
+    // Monta o UPDATE apenas com o que veio no corpo. Usar COALESCE aqui impediria
+    // limpar um campo, por exemplo tirar o responsável que já estava definido.
+    const EDITAVEIS = [
+      'cliente', 'telefone', 'endereco', 'data_entrega', 'hora_entrega',
+      'data_coleta', 'hora_coleta', 'gas', 'valor_entrega_coleta',
+      'desconto', 'pago', 'resp_entrega', 'resp_coleta',
+    ];
+
+    const alvos = EDITAVEIS.filter(temCampo);
+    const valores = alvos.map((campo) => {
+      const v = req.body[campo];
+      // Campo de texto ou data em branco vira null, não string vazia
+      return v === '' ? null : v;
+    });
 
     const atualizado = await transacao(async (client) => {
-      const { rows } = await client.query(
-        `UPDATE pedidos SET
-           cliente = COALESCE($1, cliente),
-           telefone = COALESCE($2, telefone),
-           endereco = COALESCE($3, endereco),
-           data_entrega = COALESCE($4, data_entrega),
-           hora_entrega = COALESCE($5, hora_entrega),
-           data_coleta = COALESCE($6, data_coleta),
-           hora_coleta = COALESCE($7, hora_coleta),
-           gas = COALESCE($8, gas),
-           valor_entrega_coleta = COALESCE($9, valor_entrega_coleta),
-           desconto = COALESCE($10, desconto),
-           pago = COALESCE($11, pago),
-           resp_entrega = COALESCE($12, resp_entrega),
-           resp_coleta = COALESCE($13, resp_coleta),
-           updated_at = CURRENT_TIMESTAMP
-         WHERE id = $14 RETURNING *`,
-        [
-          cliente ?? null,
-          telefone ?? null,
-          endereco ?? null,
-          data_entrega ?? null,
-          hora_entrega ?? null,
-          data_coleta ?? null,
-          hora_coleta ?? null,
-          gas ?? null,
-          valor_entrega_coleta ?? null,
-          desconto ?? null,
-          pago ?? null,
-          resp_entrega ?? null,
-          resp_coleta ?? null,
-          id,
-        ]
-      );
+      let atualizadoRow = atual.rows[0];
+
+      if (alvos.length > 0) {
+        const sets = alvos.map((campo, i) => `${campo} = $${i + 1}`);
+        const { rows } = await client.query(
+          `UPDATE pedidos SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP
+           WHERE id = $${alvos.length + 1} RETURNING *`,
+          [...valores, id]
+        );
+        atualizadoRow = rows[0];
+      }
 
       if (itens?.length) {
         await client.query('DELETE FROM pedido_itens WHERE pedido_id = $1', [id]);
@@ -239,7 +250,7 @@ export async function updatePedido(req, res) {
         }
       }
 
-      return rows[0];
+      return atualizadoRow;
     });
 
     const completo = await carregarDetalhes(atualizado);
