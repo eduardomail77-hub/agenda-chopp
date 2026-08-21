@@ -144,7 +144,12 @@ router.get('/preferencias', async (req, res) => {
   }
 });
 
-const CHAVES_VALIDAS = ['lembretes', 'valor_entrega_padrao'];
+const CHAVES_VALIDAS = [
+  'lembretes',
+  'valor_entrega_padrao',
+  'hora_entrega_padrao',
+  'hora_coleta_padrao',
+];
 
 router.put('/preferencias', exigirAdmin, async (req, res) => {
   try {

@@ -233,7 +233,11 @@ function Lembretes({ ehAdmin }) {
 
 function Precos({ ehAdmin }) {
   const [cervejas, setCervejas] = useState([]);
-  const [entregaPadrao, setEntregaPadrao] = useState('0');
+  const [prefs, setPrefs] = useState({
+    valor_entrega_padrao: '0',
+    hora_entrega_padrao: '10:00',
+    hora_coleta_padrao: '10:00',
+  });
   const [erro, setErro] = useState(null);
   const [ok, setOk] = useState(null);
 
@@ -243,7 +247,11 @@ function Precos({ ehAdmin }) {
     try {
       setCervejas(await getCervejas());
       const p = await getPreferencias();
-      setEntregaPadrao(p.valor_entrega_padrao || '0');
+      setPrefs({
+        valor_entrega_padrao: p.valor_entrega_padrao || '0',
+        hora_entrega_padrao: p.hora_entrega_padrao || '10:00',
+        hora_coleta_padrao: p.hora_coleta_padrao || '10:00',
+      });
     } catch (e) { setErro(e.message); }
   }
 
@@ -253,26 +261,40 @@ function Precos({ ehAdmin }) {
       await Promise.all(
         cervejas.map((c) => atualizarCerveja(c.id, { preco_litro: Number(c.preco_litro) || 0 }))
       );
-      await salvarPreferencias({ valor_entrega_padrao: entregaPadrao });
-      setOk('Preços salvos. Eles entram preenchidos no pedido, e dá para mudar em cada pedido.');
+      await salvarPreferencias(prefs);
+      setOk('Padrões salvos. Eles entram preenchidos no pedido, e dá para mudar em cada pedido.');
     } catch (e) { setErro(e.message); }
   }
 
+  const setPref = (k, v) => setPrefs((p) => ({ ...p, [k]: v }));
+
   return (
     <section className="card">
-      <h2>Preços</h2>
+      <h2>Preços e padrões</h2>
       <p className="hint">
-        Valor sugerido por litro de cada rótulo e a taxa padrão de entrega, instalação e chopeira.
-        No pedido, o vendedor pode alterar os dois.
+        Valor sugerido por litro de cada rótulo, taxa padrão de entrega e horários que já vêm
+        preenchidos no pedido. O vendedor pode alterar tudo em cada pedido.
       </p>
 
       <Aviso erro={erro} ok={ok} />
 
-      <label className="field">
-        <span>Entrega, instalação e chopeira (padrão)</span>
-        <input type="number" step="0.01" min="0" value={entregaPadrao} disabled={!ehAdmin}
-          onChange={(e) => setEntregaPadrao(e.target.value)} />
-      </label>
+      <div className="grid-form">
+        <label className="field">
+          <span>Entrega, instalação e chopeira (padrão)</span>
+          <input type="number" step="0.01" min="0" value={prefs.valor_entrega_padrao} disabled={!ehAdmin}
+            onChange={(e) => setPref('valor_entrega_padrao', e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Hora padrão da entrega</span>
+          <input type="time" value={prefs.hora_entrega_padrao} disabled={!ehAdmin}
+            onChange={(e) => setPref('hora_entrega_padrao', e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Hora padrão do recolhimento</span>
+          <input type="time" value={prefs.hora_coleta_padrao} disabled={!ehAdmin}
+            onChange={(e) => setPref('hora_coleta_padrao', e.target.value)} />
+        </label>
+      </div>
 
       <div className="tabela">
         <div className="tabela-head"><span>Rótulo</span><span>Estilo</span><span>R$ / litro</span></div>
@@ -292,7 +314,7 @@ function Precos({ ehAdmin }) {
         ))}
       </div>
 
-      {ehAdmin && <button className="btn-primary" onClick={salvar}>Salvar preços</button>}
+      {ehAdmin && <button className="btn-primary" onClick={salvar}>Salvar preços e padrões</button>}
     </section>
   );
 }

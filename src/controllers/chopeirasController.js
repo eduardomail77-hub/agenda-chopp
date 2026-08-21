@@ -20,12 +20,17 @@ export async function getChopeirasDisponiveisPorData(req, res) {
       return res.status(400).json({ erro: 'Data é obrigatória' });
     }
 
+    // A chopeira fica presa da entrega até o recolhimento, não só no dia da entrega
     const result = await query(
       `SELECT c.*,
         (SELECT p.cliente FROM pedidos p
          JOIN pedido_chopeiras pc ON p.id = pc.pedido_id
-         WHERE pc.chopeira_id = c.id AND p.data_entrega = $1 AND p.status = 'confirmado') as ocupada_por
+         WHERE pc.chopeira_id = c.id
+           AND p.status = 'confirmado'
+           AND $1::date BETWEEN p.data_entrega AND COALESCE(p.data_coleta, p.data_entrega)
+         LIMIT 1) as ocupada_por
       FROM chopeiras c
+      WHERE c.ativo = true
       ORDER BY c.id ASC`,
       [data]
     );

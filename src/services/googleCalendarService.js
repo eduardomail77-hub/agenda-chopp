@@ -11,24 +11,30 @@ const auth = new google.auth.GoogleAuth({
 
 const calendar = google.calendar({ version: 'v3', auth });
 const calendarId = () => process.env.GOOGLE_CALENDAR_ID;
+const FUSO = 'America/Sao_Paulo';
 
-/** Data em YYYY-MM-DD, que é o formato exigido para evento de dia inteiro. */
-function soData(valor) {
-  if (valor instanceof Date) return valor.toISOString().split('T')[0];
-  return String(valor).split('T')[0];
-}
+const soData = (valor) =>
+  valor instanceof Date ? valor.toISOString().split('T')[0] : String(valor).split('T')[0];
 
-function diaSeguinte(data) {
-  const d = new Date(`${soData(data)}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().split('T')[0];
+/** Junta data e hora no formato que o Google espera para evento com horário. */
+function inicioFim(data, hora, duracaoMin = 60) {
+  const h = (hora || '10:00').slice(0, 5);
+  const inicio = `${soData(data)}T${h}:00`;
+
+  const [hh, mm] = h.split(':').map(Number);
+  const fim = new Date(Date.UTC(2000, 0, 1, hh, mm + duracaoMin));
+  const fimStr = `${String(fim.getUTCHours()).padStart(2, '0')}:${String(fim.getUTCMinutes()).padStart(2, '0')}`;
+
+  return {
+    start: { dateTime: inicio, timeZone: FUSO },
+    end: { dateTime: `${soData(data)}T${fimStr}:00`, timeZone: FUSO },
+  };
 }
 
 async function lembretesConfigurados() {
   try {
     const { rows } = await query("SELECT valor FROM configuracoes WHERE chave = 'lembretes'");
-    const bruto = rows[0]?.valor || '2880,1440,60';
-    const minutos = bruto
+    const minutos = (rows[0]?.valor || '2880,1440,60')
       .split(',')
       .map((m) => parseInt(m.trim(), 10))
       .filter((m) => Number.isInteger(m) && m >= 0 && m <= 40320);
@@ -37,93 +43,136 @@ async function lembretesConfigurados() {
     return minutos.slice(0, 5).map((minutes) => ({ method: 'popup', minutes }));
   } catch (err) {
     console.error('Erro ao ler lembretes, usando padrão:', err.message);
-    return [
-      { method: 'popup', minutes: 2880 },
-      { method: 'popup', minutes: 1440 },
-      { method: 'popup', minutes: 60 },
-    ];
+    return [2880, 1440, 60].map((minutes) => ({ method: 'popup', minutes }));
   }
 }
 
-function montarDescricao(pedido) {
-  const cervejas =
-    pedido.itens?.map((i) => `${i.cerveja} (${i.litros}L)`).join(', ') || 'N/A';
-  const chopeiras = pedido.chopeiras?.join(', ') || 'N/A';
-
+function resumoFinanceiro(pedido) {
   const subtotal = (pedido.itens || []).reduce(
-    (soma, i) => soma + Number(i.litros || 0) * Number(i.valor_litro || 0),
+    (s, i) => s + Number(i.litros || 0) * Number(i.valor_litro || 0),
     0
   );
   const entrega = Number(pedido.valor_entrega_coleta || 0);
   const desconto = Number(pedido.desconto || 0);
-  const total = subtotal + entrega - desconto;
+  return { subtotal, entrega, desconto, total: subtotal + entrega - desconto };
+}
 
-  return [
+function descricao(pedido, etapa) {
+  const cervejas = pedido.itens?.map((i) => `${i.cerveja} (${i.litros}L)`).join(', ') || 'N/A';
+  const chopeiras = pedido.chopeiras?.join(', ') || 'N/A';
+  const { subtotal, entrega, desconto, total } = resumoFinanceiro(pedido);
+
+  const linhas = [
     `Cliente: ${pedido.cliente}`,
     `Telefone: ${pedido.telefone || 'N/A'}`,
+    `Endereço: ${pedido.endereco || 'A confirmar'}`,
+    '',
     `Cervejas: ${cervejas}`,
     `Chopeiras: ${chopeiras}`,
     `Gás: ${pedido.gas ? 'Sim' : 'Não'}`,
-    `Entrega: ${pedido.resp_entrega || 'A definir'}`,
-    `Coleta: ${pedido.resp_coleta || 'A definir'}`,
     '',
-    `Chopp: R$ ${subtotal.toFixed(2)}`,
-    `Entrega, instalação e chopeira: R$ ${entrega.toFixed(2)}`,
-    `Desconto: R$ ${desconto.toFixed(2)}`,
-    `Total: R$ ${total.toFixed(2)}`,
-    `Pago: ${pedido.pago ? 'Sim' : 'Não'}`,
-  ].join('\n');
+    `Entrega: ${soData(pedido.data_entrega).split('-').reverse().join('/')} às ${(pedido.hora_entrega || '10:00').slice(0, 5)} · ${pedido.resp_entrega || 'a definir'}`,
+    `Recolhimento: ${pedido.data_coleta ? soData(pedido.data_coleta).split('-').reverse().join('/') : 'a definir'} às ${(pedido.hora_coleta || '10:00').slice(0, 5)} · ${pedido.resp_coleta || 'a definir'}`,
+  ];
+
+  if (etapa === 'entrega') {
+    linhas.push(
+      '',
+      `Chopp: R$ ${subtotal.toFixed(2)}`,
+      `Entrega, instalação e chopeira: R$ ${entrega.toFixed(2)}`,
+      `Desconto: R$ ${desconto.toFixed(2)}`,
+      `Total: R$ ${total.toFixed(2)}`,
+      `Pago: ${pedido.pago ? 'Sim' : 'Não'}`
+    );
+  }
+
+  return linhas.join('\n');
 }
 
-async function montarEvento(pedido) {
+async function montarEvento(pedido, etapa) {
+  const ehEntrega = etapa === 'entrega';
+  const data = ehEntrega ? pedido.data_entrega : pedido.data_coleta;
+  const hora = ehEntrega ? pedido.hora_entrega : pedido.hora_coleta;
+  const responsavel = ehEntrega ? pedido.resp_entrega : pedido.resp_coleta;
+
   return {
-    summary: `Chopp · ${pedido.cliente}`,
-    description: montarDescricao(pedido),
-    start: { date: soData(pedido.data_entrega) },
-    end: { date: diaSeguinte(pedido.data_entrega) },
-    reminders: {
-      useDefault: false,
-      overrides: await lembretesConfigurados(),
-    },
+    summary: `${ehEntrega ? 'Entrega' : 'Recolhimento'} · ${pedido.cliente}${responsavel ? ` (${responsavel})` : ''}`,
+    location: pedido.endereco || undefined,
+    description: descricao(pedido, etapa),
+    ...inicioFim(data, hora),
+    reminders: { useDefault: false, overrides: await lembretesConfigurados() },
   };
 }
 
+/**
+ * Cria os dois eventos do pedido: entrega e recolhimento.
+ * Devolve os ids para o pedido guardar.
+ */
 export async function createGoogleCalendarEvent(pedido) {
   if (!calendarId()) {
     console.warn('GOOGLE_CALENDAR_ID não configurado, pulando criação de evento');
-    return null;
+    return { entrega: null, coleta: null };
   }
 
-  const response = await calendar.events.insert({
+  const entrega = await calendar.events.insert({
     calendarId: calendarId(),
-    requestBody: await montarEvento(pedido),
+    requestBody: await montarEvento(pedido, 'entrega'),
   });
 
-  console.log('Evento criado no Google Agenda:', response.data.id);
-  return response.data.id;
+  let coletaId = null;
+  if (pedido.data_coleta) {
+    const coleta = await calendar.events.insert({
+      calendarId: calendarId(),
+      requestBody: await montarEvento(pedido, 'coleta'),
+    });
+    coletaId = coleta.data.id;
+  }
+
+  console.log('Eventos criados no Google Agenda:', entrega.data.id, coletaId);
+  return { entrega: entrega.data.id, coleta: coletaId };
 }
 
-export async function updateGoogleCalendarEvent(googleEventId, pedido) {
-  if (!googleEventId || !calendarId()) return null;
+export async function updateGoogleCalendarEvent(pedido) {
+  if (!calendarId()) return { entrega: null, coleta: null };
 
-  const response = await calendar.events.update({
-    calendarId: calendarId(),
-    eventId: googleEventId,
-    requestBody: await montarEvento(pedido),
-  });
+  let entregaId = pedido.google_event_entrega;
+  let coletaId = pedido.google_event_coleta;
 
-  console.log('Evento atualizado no Google Agenda:', response.data.id);
-  return response.data.id;
+  if (entregaId) {
+    await calendar.events.update({
+      calendarId: calendarId(),
+      eventId: entregaId,
+      requestBody: await montarEvento(pedido, 'entrega'),
+    });
+  }
+
+  if (pedido.data_coleta) {
+    if (coletaId) {
+      await calendar.events.update({
+        calendarId: calendarId(),
+        eventId: coletaId,
+        requestBody: await montarEvento(pedido, 'coleta'),
+      });
+    } else {
+      // Data de recolhimento preenchida depois da confirmação
+      const novo = await calendar.events.insert({
+        calendarId: calendarId(),
+        requestBody: await montarEvento(pedido, 'coleta'),
+      });
+      coletaId = novo.data.id;
+    }
+  }
+
+  return { entrega: entregaId, coleta: coletaId };
 }
 
-export async function deleteGoogleCalendarEvent(googleEventId) {
-  if (!googleEventId || !calendarId()) return;
+export async function deleteGoogleCalendarEvent(eventId) {
+  if (!eventId || !calendarId()) return;
 
   try {
-    await calendar.events.delete({ calendarId: calendarId(), eventId: googleEventId });
-    console.log('Evento removido do Google Agenda:', googleEventId);
+    await calendar.events.delete({ calendarId: calendarId(), eventId });
   } catch (err) {
-    // Evento já removido na mão não deve derrubar a exclusão do pedido
+    // Evento removido na mão não deve derrubar a exclusão do pedido
     if (err.code === 404 || err.code === 410) return;
     throw err;
   }
@@ -132,7 +181,7 @@ export async function deleteGoogleCalendarEvent(googleEventId) {
 /**
  * Dá acesso de leitura ao calendário para um e-mail do Google.
  * É assim que o aviso chega no celular: a pessoa passa a enxergar
- * o calendário no app do Google Agenda e recebe os lembretes do evento.
+ * o calendário no app do Google Agenda e recebe os lembretes dos eventos.
  */
 export async function compartilharCalendario(email) {
   if (!calendarId() || !email) return;
@@ -140,10 +189,7 @@ export async function compartilharCalendario(email) {
   try {
     await calendar.acl.insert({
       calendarId: calendarId(),
-      requestBody: {
-        role: 'reader',
-        scope: { type: 'user', value: email },
-      },
+      requestBody: { role: 'reader', scope: { type: 'user', value: email } },
       sendNotifications: true,
     });
     console.log('Calendário compartilhado com', email);
@@ -157,10 +203,7 @@ export async function removerAcessoCalendario(email) {
   if (!calendarId() || !email) return;
 
   try {
-    await calendar.acl.delete({
-      calendarId: calendarId(),
-      ruleId: `user:${email}`,
-    });
+    await calendar.acl.delete({ calendarId: calendarId(), ruleId: `user:${email}` });
     console.log('Acesso ao calendário removido de', email);
   } catch (err) {
     if (err.code === 404) return;

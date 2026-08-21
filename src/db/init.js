@@ -102,6 +102,28 @@ async function migrate() {
     ALTER TABLE cervejas ADD COLUMN IF NOT EXISTS preco_litro NUMERIC(10,2) DEFAULT 0;
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS desconto NUMERIC(10,2) DEFAULT 0;
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS criado_por INTEGER REFERENCES usuarios(id);
+    ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS endereco TEXT;
+    ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS hora_entrega TIME;
+    ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS data_coleta DATE;
+    ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS hora_coleta TIME;
+    ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS google_event_entrega VARCHAR(255);
+    ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS google_event_coleta VARCHAR(255);
+  `);
+
+  // Eventos antigos ficavam num campo só; passam a ser o evento de entrega
+  await query(`
+    UPDATE pedidos SET google_event_entrega = google_event_id
+    WHERE google_event_id IS NOT NULL AND google_event_entrega IS NULL
+  `);
+
+  // Pedido sem data de coleta recolhe no dia seguinte à entrega
+  await query(`
+    UPDATE pedidos SET data_coleta = data_entrega + INTERVAL '1 day'
+    WHERE data_coleta IS NULL
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_pedidos_coleta ON pedidos(data_coleta)
   `);
 
   console.log('✓ Migrações executadas com sucesso');
@@ -135,6 +157,8 @@ const CONFIG_PADRAO = {
   // minutos antes do início do evento, separados por vírgula
   lembretes: '2880,1440,60',
   valor_entrega_padrao: '0',
+  hora_entrega_padrao: '10:00',
+  hora_coleta_padrao: '10:00',
 };
 
 async function seed() {

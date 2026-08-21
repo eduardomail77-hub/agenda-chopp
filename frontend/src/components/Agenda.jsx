@@ -10,14 +10,36 @@ const calcTotal = (o) =>
 
 const totalLitros = (o) => (o.itens || []).reduce((s, it) => s + (Number(it.litros) || 0), 0);
 
+/** A API devolve a data em ISO completo; aqui só interessa YYYY-MM-DD. */
+const soData = (s) => (s ? String(s).split('T')[0] : '');
+
 const diaSemana = (s) => {
-  if (!s) return '';
-  const dt = new Date(s + 'T12:00:00');
-  return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][dt.getDay()];
+  const d = soData(s);
+  if (!d) return '';
+  return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][new Date(`${d}T12:00:00`).getDay()];
+};
+
+const dataCurta = (s) => {
+  const d = soData(s);
+  if (!d) return 'a definir';
+  const [ano, mes, dia] = d.split('-');
+  return `${dia}/${mes}/${ano.slice(2)}`;
+};
+
+const hora = (h) => (h ? String(h).slice(0, 5) : null);
+
+/** "15/09/26 às 10:00 · Eduardo" */
+const momento = (data, h, resp) => {
+  const partes = [dataCurta(data)];
+  if (hora(h)) partes.push(`às ${hora(h)}`);
+  partes.push(resp || 'responsável a definir');
+  return partes.join(' · ');
 };
 
 export default function Agenda({ orders, ehAdmin, onConfirm, onTogglePago }) {
-  const sorted = [...orders].sort((a, b) => a.data_entrega.localeCompare(b.data_entrega));
+  const sorted = [...orders].sort((a, b) =>
+    soData(a.data_entrega).localeCompare(soData(b.data_entrega))
+  );
   const pendentes = sorted.filter((o) => o.status === 'pendente').length;
 
   return (
@@ -32,9 +54,9 @@ export default function Agenda({ orders, ehAdmin, onConfirm, onTogglePago }) {
           <article key={o.id} className={`card ${o.status}`}>
             <div className="cardTop">
               <div className="dateChip">
-                <span className="dnum">{o.data_entrega.split('-')[2]}</span>
+                <span className="dnum">{soData(o.data_entrega).split('-')[2]}</span>
                 <span className="dinfo">
-                  {o.data_entrega.split('-')[1]}/{o.data_entrega.slice(2, 4)}
+                  {soData(o.data_entrega).split('-')[1]}/{soData(o.data_entrega).slice(2, 4)}
                   <br />
                   {diaSemana(o.data_entrega)}
                 </span>
@@ -42,6 +64,7 @@ export default function Agenda({ orders, ehAdmin, onConfirm, onTogglePago }) {
               <div className="cliente">
                 <h3>{o.cliente}</h3>
                 <span className="tel">{o.telefone}</span>
+                {o.endereco && <span className="endereco">{o.endereco}</span>}
               </div>
               <span className={`badge ${o.status}`}>
                 {o.status === 'confirmado' ? 'Confirmado' : 'Pendente'}
@@ -61,8 +84,8 @@ export default function Agenda({ orders, ehAdmin, onConfirm, onTogglePago }) {
                 </span>
               </div>
               <Row label="Chopeiras" v={o.chopeiras?.join('  ·  ') || 'N/A'} />
-              <Row label="Entrega" v={o.resp_entrega || <em className="miss">definir</em>} />
-              <Row label="Coleta" v={o.resp_coleta || <em className="miss">definir</em>} />
+              <Row label="Entrega" v={momento(o.data_entrega, o.hora_entrega, o.resp_entrega)} />
+              <Row label="Recolhimento" v={momento(o.data_coleta, o.hora_coleta, o.resp_coleta)} />
             </div>
 
             <div className="cardBottom">

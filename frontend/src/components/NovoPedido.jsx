@@ -23,7 +23,11 @@ export default function NovoPedido({ orders = [], onSave }) {
   const [f, setF] = useState({
     cliente: '',
     telefone: '',
+    endereco: '',
     data_entrega: '',
+    hora_entrega: '',
+    data_coleta: '',
+    hora_coleta: '',
     itens: [{ cerveja: '', litros: '', valor_litro: '' }],
     chopeiras: [],
     gas: false,
@@ -62,6 +66,8 @@ export default function NovoPedido({ orders = [], onSave }) {
       setF((p) => ({
         ...p,
         valor_entrega_coleta: prefs.valor_entrega_padrao || '',
+        hora_entrega: prefs.hora_entrega_padrao || '10:00',
+        hora_coleta: prefs.hora_coleta_padrao || '10:00',
         itens: [
           {
             cerveja: ativas[0]?.nome || '',
@@ -138,7 +144,11 @@ export default function NovoPedido({ orders = [], onSave }) {
       await createPedido({
         cliente: f.cliente,
         telefone: f.telefone,
+        endereco: f.endereco,
         data_entrega: f.data_entrega,
+        hora_entrega: f.hora_entrega || null,
+        data_coleta: f.data_coleta || null,
+        hora_coleta: f.hora_coleta || null,
         gas: f.gas,
         valor_entrega_coleta: f.valor_entrega_coleta || 0,
         desconto: f.desconto || 0,
@@ -183,13 +193,76 @@ export default function NovoPedido({ orders = [], onSave }) {
               placeholder="(51) 9..."
             />
           </Field>
-          <Field label="Data da entrega">
+          <Field label="Endereço do evento" span2>
             <input
-              type="date"
-              value={f.data_entrega}
-              onChange={(e) => set('data_entrega', e.target.value)}
+              value={f.endereco}
+              onChange={(e) => set('endereco', e.target.value)}
+              placeholder="Rua, número, bairro, cidade"
             />
           </Field>
+        </div>
+
+        <div className="fblock">
+          <label className="lbl">Entrega</label>
+          <div className="fgrid">
+            <Field label="Data">
+              <input
+                type="date"
+                value={f.data_entrega}
+                onChange={(e) => {
+                  set('data_entrega', e.target.value);
+                  // Recolhimento não pode ficar para trás da entrega
+                  if (f.data_coleta && f.data_coleta < e.target.value) {
+                    set('data_coleta', e.target.value);
+                  }
+                }}
+              />
+            </Field>
+            <Field label="Hora">
+              <input
+                type="time"
+                value={f.hora_entrega}
+                onChange={(e) => set('hora_entrega', e.target.value)}
+              />
+            </Field>
+            <Field label="Responsável">
+              <select value={f.resp_entrega} onChange={(e) => set('resp_entrega', e.target.value)}>
+                <option value="">Definir depois</option>
+                {equipe.map((p) => (
+                  <option key={p.id} value={p.nome}>{p.nome}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </div>
+
+        <div className="fblock">
+          <label className="lbl">Recolhimento</label>
+          <div className="fgrid">
+            <Field label="Data">
+              <input
+                type="date"
+                value={f.data_coleta}
+                min={f.data_entrega || undefined}
+                onChange={(e) => set('data_coleta', e.target.value)}
+              />
+            </Field>
+            <Field label="Hora">
+              <input
+                type="time"
+                value={f.hora_coleta}
+                onChange={(e) => set('hora_coleta', e.target.value)}
+              />
+            </Field>
+            <Field label="Responsável">
+              <select value={f.resp_coleta} onChange={(e) => set('resp_coleta', e.target.value)}>
+                <option value="">Definir depois</option>
+                {equipe.map((p) => (
+                  <option key={p.id} value={p.nome}>{p.nome}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
         </div>
 
         <div className="fblock">
@@ -286,25 +359,6 @@ export default function NovoPedido({ orders = [], onSave }) {
             />
             Inclui gás
           </label>
-        </div>
-
-        <div className="fgrid">
-          <Field label="Responsável pela entrega">
-            <select value={f.resp_entrega} onChange={(e) => set('resp_entrega', e.target.value)}>
-              <option value="">Definir depois</option>
-              {equipe.map((p) => (
-                <option key={p.id} value={p.nome}>{p.nome}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Responsável pela coleta">
-            <select value={f.resp_coleta} onChange={(e) => set('resp_coleta', e.target.value)}>
-              <option value="">Definir depois</option>
-              {equipe.map((p) => (
-                <option key={p.id} value={p.nome}>{p.nome}</option>
-              ))}
-            </select>
-          </Field>
         </div>
 
         <div className="fblock">

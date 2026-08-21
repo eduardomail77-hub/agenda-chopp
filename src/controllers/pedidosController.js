@@ -5,6 +5,8 @@ import {
   deleteGoogleCalendarEvent,
 } from '../services/googleCalendarService.js';
 
+const soData = (v) => (v ? String(v instanceof Date ? v.toISOString() : v).split('T')[0] : null);
+
 async function carregarDetalhes(pedido) {
   const itens = await query(
     'SELECT cerveja, litros, valor_litro FROM pedido_itens WHERE pedido_id = $1',
@@ -72,7 +74,11 @@ export async function createPedido(req, res) {
     const {
       cliente,
       telefone,
+      endereco,
       data_entrega,
+      hora_entrega,
+      data_coleta,
+      hora_coleta,
       gas = false,
       valor_entrega_coleta = 0,
       desconto = 0,
@@ -91,18 +97,26 @@ export async function createPedido(req, res) {
     if (Number(desconto) < 0 || Number(valor_entrega_coleta) < 0) {
       return res.status(400).json({ erro: 'Valores não podem ser negativos' });
     }
+    if (data_coleta && data_coleta < data_entrega) {
+      return res.status(400).json({ erro: 'O recolhimento não pode ser antes da entrega' });
+    }
 
     const pedido = await transacao(async (client) => {
       const { rows } = await client.query(
         `INSERT INTO pedidos
-           (cliente, telefone, data_entrega, gas, valor_entrega_coleta, desconto,
-            pago, resp_entrega, resp_coleta, status, origem, criado_por)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pendente','interno',$10)
+           (cliente, telefone, endereco, data_entrega, hora_entrega, data_coleta, hora_coleta,
+            gas, valor_entrega_coleta, desconto, pago, resp_entrega, resp_coleta,
+            status, origem, criado_por)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pendente','interno',$14)
          RETURNING *`,
         [
           cliente,
           telefone || null,
+          endereco || null,
           data_entrega,
+          hora_entrega || null,
+          data_coleta || null,
+          hora_coleta || null,
           gas,
           valor_entrega_coleta,
           desconto,
@@ -144,7 +158,11 @@ export async function updatePedido(req, res) {
     const {
       cliente,
       telefone,
+      endereco,
       data_entrega,
+      hora_entrega,
+      data_coleta,
+      hora_coleta,
       gas,
       valor_entrega_coleta,
       desconto,
@@ -160,24 +178,38 @@ export async function updatePedido(req, res) {
       return res.status(404).json({ erro: 'Pedido não encontrado' });
     }
 
+    const entregaFinal = data_entrega ?? soData(atual.rows[0].data_entrega);
+    const coletaFinal = data_coleta ?? soData(atual.rows[0].data_coleta);
+    if (coletaFinal && entregaFinal && coletaFinal < entregaFinal) {
+      return res.status(400).json({ erro: 'O recolhimento não pode ser antes da entrega' });
+    }
+
     const atualizado = await transacao(async (client) => {
       const { rows } = await client.query(
         `UPDATE pedidos SET
            cliente = COALESCE($1, cliente),
            telefone = COALESCE($2, telefone),
-           data_entrega = COALESCE($3, data_entrega),
-           gas = COALESCE($4, gas),
-           valor_entrega_coleta = COALESCE($5, valor_entrega_coleta),
-           desconto = COALESCE($6, desconto),
-           pago = COALESCE($7, pago),
-           resp_entrega = COALESCE($8, resp_entrega),
-           resp_coleta = COALESCE($9, resp_coleta),
+           endereco = COALESCE($3, endereco),
+           data_entrega = COALESCE($4, data_entrega),
+           hora_entrega = COALESCE($5, hora_entrega),
+           data_coleta = COALESCE($6, data_coleta),
+           hora_coleta = COALESCE($7, hora_coleta),
+           gas = COALESCE($8, gas),
+           valor_entrega_coleta = COALESCE($9, valor_entrega_coleta),
+           desconto = COALESCE($10, desconto),
+           pago = COALESCE($11, pago),
+           resp_entrega = COALESCE($12, resp_entrega),
+           resp_coleta = COALESCE($13, resp_coleta),
            updated_at = CURRENT_TIMESTAMP
-         WHERE id = $10 RETURNING *`,
+         WHERE id = $14 RETURNING *`,
         [
           cliente ?? null,
           telefone ?? null,
+          endereco ?? null,
           data_entrega ?? null,
+          hora_entrega ?? null,
+          data_coleta ?? null,
+          hora_coleta ?? null,
           gas ?? null,
           valor_entrega_coleta ?? null,
           desconto ?? null,
@@ -212,15 +244,19 @@ export async function updatePedido(req, res) {
 
     const completo = await carregarDetalhes(atualizado);
 
-    // Se já estava confirmado, o evento na agenda precisa refletir a mudança
-    if (completo.google_event_id) {
+    // Se já estava confirmado, os eventos na agenda precisam refletir a mudança
+    if (completo.google_event_entrega) {
       try {
-        await updateGoogleCalendarEvent(completo.google_event_id, completo);
+        const ids = await updateGoogleCalendarEvent(completo);
+        if (ids.coleta && ids.coleta !== completo.google_event_coleta) {
+          await query('UPDATE pedidos SET google_event_coleta = $1 WHERE id = $2', [ids.coleta, id]);
+          completo.google_event_coleta = ids.coleta;
+        }
       } catch (err) {
         console.error('Pedido salvo, mas falhou ao atualizar o Google Agenda:', err.message);
         return res.json({
           ...completo,
-          aviso: 'Pedido salvo, mas não consegui atualizar o evento no Google Agenda',
+          aviso: 'Pedido salvo, mas não consegui atualizar os eventos no Google Agenda',
         });
       }
     }
@@ -248,21 +284,22 @@ export async function confirmPedido(req, res) {
 
     // Se a agenda falhar, o pedido NÃO é confirmado em silêncio:
     // confirmar sem aviso é pior do que não confirmar.
-    let googleEventId;
+    let ids;
     try {
-      googleEventId = await createGoogleCalendarEvent(pedido);
+      ids = await createGoogleCalendarEvent(pedido);
     } catch (err) {
       console.error('Erro ao criar evento no Google Agenda:', err.message);
       return res.status(502).json({
-        erro: 'Não consegui criar o evento no Google Agenda, o pedido continua pendente',
+        erro: 'Não consegui criar os eventos no Google Agenda, o pedido continua pendente',
         detalhe: err.message,
       });
     }
 
     const atualizado = await query(
-      `UPDATE pedidos SET status = 'confirmado', google_event_id = $1, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2 RETURNING *`,
-      [googleEventId, id]
+      `UPDATE pedidos SET status = 'confirmado',
+         google_event_entrega = $1, google_event_coleta = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 RETURNING *`,
+      [ids.entrega, ids.coleta, id]
     );
 
     res.json(await carregarDetalhes(atualizado.rows[0]));
@@ -281,9 +318,10 @@ export async function deletePedido(req, res) {
       return res.status(404).json({ erro: 'Pedido não encontrado' });
     }
 
-    if (rows[0].google_event_id) {
+    for (const eventId of [rows[0].google_event_entrega, rows[0].google_event_coleta]) {
+      if (!eventId) continue;
       try {
-        await deleteGoogleCalendarEvent(rows[0].google_event_id);
+        await deleteGoogleCalendarEvent(eventId);
       } catch (err) {
         console.error('Falhou ao remover evento da agenda:', err.message);
       }
