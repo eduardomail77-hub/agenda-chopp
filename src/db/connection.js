@@ -5,25 +5,26 @@ dotenv.config();
 
 const { Pool } = pg;
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.error('DATABASE_URL não está configurada');
+let pool = null;
+
+function getPool() {
+  if (!pool) {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL não está configurada');
+    }
+    pool = new Pool({ connectionString: databaseUrl });
+    pool.on('error', (err) => {
+      console.error('Erro no pool de conexões:', err);
+    });
+  }
+  return pool;
 }
-
-const poolConfig = databaseUrl ?
-  { connectionString: databaseUrl } :
-  { host: 'localhost', port: 5432, database: 'test', user: 'postgres', password: 'test' };
-
-const pool = new Pool(poolConfig);
-
-pool.on('error', (err) => {
-  console.error('Erro no pool de conexões:', err);
-});
 
 export async function query(text, params) {
   const start = Date.now();
   try {
-    const result = await pool.query(text, params);
+    const result = await getPool().query(text, params);
     const duration = Date.now() - start;
     if (process.env.NODE_ENV === 'development') {
       console.log('Query executada:', { text, duration, rows: result.rowCount });
@@ -36,7 +37,10 @@ export async function query(text, params) {
 }
 
 export async function close() {
-  await pool.end();
+  if (pool) {
+    await pool.end();
+    pool = null;
+  }
 }
 
-export default pool;
+export default { query, close };
