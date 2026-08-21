@@ -3,6 +3,7 @@ import {
   getUsuarios,
   criarUsuario,
   atualizarUsuario,
+  reenviarConviteCalendario,
   getPreferencias,
   salvarPreferencias,
   getCervejas,
@@ -94,6 +95,17 @@ function Equipe({ ehAdmin }) {
     } catch (e) { setErro(e.message); }
   }
 
+  async function reenviar(u) {
+    setErro(null); setOk(null);
+    try {
+      const r = await reenviarConviteCalendario(u.id);
+      setOk(r.mensagem);
+      carregar();
+    } catch (e) { setErro(e.message); }
+  }
+
+  const semAcesso = usuarios.filter((u) => u.ativo && u.recebe_aviso && u.acesso_calendario === false);
+
   return (
     <section className="card">
       <h2>Equipe</h2>
@@ -104,9 +116,19 @@ function Equipe({ ehAdmin }) {
 
       <Aviso erro={erro} ok={ok} />
 
+      {semAcesso.length > 0 && (
+        <div className="error">
+          {semAcesso.length === 1
+            ? `${semAcesso[0].nome} ainda não enxerga o calendário e não vai receber lembrete.`
+            : `${semAcesso.length} pessoas ainda não enxergam o calendário e não vão receber lembrete.`}{' '}
+          Use o botão Reenviar na linha de cada uma.
+        </div>
+      )}
+
       <div className="tabela">
         <div className="tabela-head">
-          <span>Nome</span><span>E-mail</span><span>Perfil</span><span>Recebe aviso</span><span>Ativo</span>
+          <span>Nome</span><span>E-mail</span><span>Perfil</span><span>Recebe aviso</span>
+          <span>Calendário</span><span>Ativo</span>
         </div>
         {usuarios.map((u) => (
           <div className="tabela-row" key={u.id}>
@@ -118,6 +140,20 @@ function Equipe({ ehAdmin }) {
             <span data-label="Recebe aviso">
               <input type="checkbox" checked={u.recebe_aviso} disabled={!ehAdmin}
                 onChange={() => alternar(u, 'recebe_aviso')} />
+            </span>
+            <span data-label="Calendário">
+              {u.acesso_calendario === null ? (
+                <em className="miss">não verificado</em>
+              ) : u.acesso_calendario ? (
+                <span className="statusOk">recebendo</span>
+              ) : (
+                <span className="statusFalta">
+                  sem acesso
+                  {ehAdmin && (
+                    <button className="linkBtn" onClick={() => reenviar(u)}>Reenviar</button>
+                  )}
+                </span>
+              )}
             </span>
             <span data-label="Ativo">
               <input type="checkbox" checked={u.ativo} disabled={!ehAdmin}

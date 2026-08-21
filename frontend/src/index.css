@@ -1453,3 +1453,30 @@ button.editar:hover {
     grid-template-columns: 1fr 90px auto;
   }
 }
+
+.statusOk {
+  color: var(--success);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.statusFalta {
+  color: var(--error);
+  font-weight: 600;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  color: var(--accent-gold);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
+}

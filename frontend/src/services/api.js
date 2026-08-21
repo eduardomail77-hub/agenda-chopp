@@ -104,6 +104,9 @@ export const criarUsuario = (data) =>
 export const atualizarUsuario = (id, data) =>
   req(`/config/usuarios/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
+export const reenviarConviteCalendario = (id) =>
+  req(`/config/usuarios/${id}/convite-calendario`, { method: 'POST' });
+
 export const getPreferencias = () => req('/config/preferencias');
 
 export const salvarPreferencias = (data) =>

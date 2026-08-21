@@ -5,6 +5,7 @@ import { exigirLogin, exigirAdmin } from '../middleware/auth.js';
 import {
   compartilharCalendario,
   removerAcessoCalendario,
+  listarAcessos,
   testarConexao,
 } from '../services/googleCalendarService.js';
 
@@ -26,10 +27,43 @@ router.get('/usuarios', async (req, res) => {
     const { rows } = await query(
       'SELECT id, nome, email, telefone, perfil, recebe_aviso, ativo FROM usuarios ORDER BY nome ASC'
     );
-    res.json(rows);
+
+    // Diz quem de fato enxerga o calendário hoje. Sem isso não dá para
+    // perceber que alguém ficou de fora e não está recebendo lembrete.
+    const comAcesso = await listarAcessos();
+
+    res.json(
+      rows.map((u) => ({
+        ...u,
+        acesso_calendario: comAcesso === null ? null : comAcesso.includes(u.email.toLowerCase()),
+      }))
+    );
   } catch (err) {
     console.error('Erro ao listar usuários:', err);
     res.status(500).json({ erro: 'Erro ao listar usuários' });
+  }
+});
+
+/** Reenvia o convite do calendário para alguém que ficou de fora. */
+router.post('/usuarios/:id/convite-calendario', exigirAdmin, async (req, res) => {
+  try {
+    const { rows } = await query('SELECT email FROM usuarios WHERE id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado' });
+
+    await compartilharCalendario(rows[0].email);
+
+    const comAcesso = await listarAcessos();
+    const ok = comAcesso === null ? null : comAcesso.includes(rows[0].email.toLowerCase());
+
+    res.json({
+      ok,
+      mensagem: ok
+        ? `Calendário compartilhado com ${rows[0].email}. Pode levar alguns minutos para aparecer no celular.`
+        : 'Enviei o compartilhamento, mas o Google ainda não confirmou. Tente de novo em instantes.',
+    });
+  } catch (err) {
+    console.error('Erro ao reenviar convite:', err.message);
+    res.status(500).json({ erro: 'Erro ao reenviar o convite do calendário' });
   }
 });
 

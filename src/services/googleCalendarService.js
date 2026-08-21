@@ -243,6 +243,19 @@ export async function compartilharCalendario(email) {
   }
 }
 
+/** E-mails que hoje enxergam o calendário, para a tela de Equipe mostrar quem está de fora. */
+export async function listarAcessos() {
+  try {
+    const { data } = await calendar.acl.list({ calendarId: await garantirCalendario() });
+    return (data.items || [])
+      .filter((r) => r.scope?.type === 'user' && r.scope.value)
+      .map((r) => r.scope.value.toLowerCase());
+  } catch (err) {
+    console.error('Não consegui listar os acessos do calendário:', err.message);
+    return null;
+  }
+}
+
 export async function removerAcessoCalendario(email) {
   if (!email) return;
 
