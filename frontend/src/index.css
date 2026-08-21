@@ -1480,3 +1480,16 @@ button.editar:hover {
   font-weight: 600;
   padding: 0;
 }
+
+.modalCaixa.estreita {
+  max-width: 460px;
+}
+
+.modalCaixa.estreita .formFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 18px;
+  margin-top: 6px;
+}

@@ -3,6 +3,7 @@ import {
   createGoogleCalendarEvent,
   updateGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
+  assinaturaDoEvento,
 } from '../services/googleCalendarService.js';
 
 const soData = (v) => (v ? String(v instanceof Date ? v.toISOString() : v).split('T')[0] : null);
@@ -255,12 +256,19 @@ export async function updatePedido(req, res) {
 
     const completo = await carregarDetalhes(atualizado);
 
-    // Se já estava confirmado, os eventos na agenda precisam refletir a mudança
+    // Se já estava confirmado, os eventos na agenda precisam refletir a mudança.
+    // Só mexe quando o conteúdo do evento mudou de verdade: reescrever à toa
+    // faz o Google avisar a equipe inteira de uma alteração que não houve.
     if (completo.google_event_entrega) {
       try {
-        const ids = await updateGoogleCalendarEvent(completo);
-        if (ids.coleta && ids.coleta !== completo.google_event_coleta) {
-          await query('UPDATE pedidos SET google_event_coleta = $1 WHERE id = $2', [ids.coleta, id]);
+        const assinatura = await assinaturaDoEvento(completo);
+
+        if (assinatura !== atual.rows[0].evento_hash) {
+          const ids = await updateGoogleCalendarEvent(completo);
+          await query(
+            'UPDATE pedidos SET evento_hash = $1, google_event_coleta = $2 WHERE id = $3',
+            [assinatura, ids.coleta, id]
+          );
           completo.google_event_coleta = ids.coleta;
         }
       } catch (err) {
@@ -308,9 +316,10 @@ export async function confirmPedido(req, res) {
 
     const atualizado = await query(
       `UPDATE pedidos SET status = 'confirmado',
-         google_event_entrega = $1, google_event_coleta = $2, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3 RETURNING *`,
-      [ids.entrega, ids.coleta, id]
+         google_event_entrega = $1, google_event_coleta = $2, evento_hash = $3,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4 RETURNING *`,
+      [ids.entrega, ids.coleta, await assinaturaDoEvento(pedido), id]
     );
 
     res.json(await carregarDetalhes(atualizado.rows[0]));

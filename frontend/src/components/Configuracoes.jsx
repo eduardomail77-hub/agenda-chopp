@@ -64,11 +64,17 @@ function Aviso({ erro, ok }) {
 
 /* ---------------- Equipe ---------------- */
 
+const NOVO_VAZIO = {
+  nome: '', email: '', email_google: '', telefone: '', senha: '',
+  perfil: 'vendedor', recebe_aviso: true,
+};
+
 function Equipe({ ehAdmin }) {
   const [usuarios, setUsuarios] = useState([]);
   const [erro, setErro] = useState(null);
   const [ok, setOk] = useState(null);
-  const [novo, setNovo] = useState({ nome: '', email: '', telefone: '', senha: '', perfil: 'vendedor', recebe_aviso: true });
+  const [novo, setNovo] = useState(NOVO_VAZIO);
+  const [editando, setEditando] = useState(null);
 
   useEffect(() => { carregar(); }, []);
 
@@ -81,8 +87,8 @@ function Equipe({ ehAdmin }) {
     setErro(null); setOk(null);
     try {
       await criarUsuario(novo);
-      setNovo({ nome: '', email: '', telefone: '', senha: '', perfil: 'vendedor', recebe_aviso: true });
-      setOk('Pessoa cadastrada. Se marcou para receber aviso, o convite do calendário foi enviado para o e-mail dela.');
+      setNovo(NOVO_VAZIO);
+      setOk('Pessoa cadastrada. Se marcou para receber aviso, o convite do calendário já foi enviado.');
       carregar();
     } catch (e) { setErro(e.message); }
   }
@@ -127,17 +133,24 @@ function Equipe({ ehAdmin }) {
 
       <div className="tabela">
         <div className="tabela-head">
-          <span>Nome</span><span>E-mail</span><span>Perfil</span><span>Recebe aviso</span>
-          <span>Calendário</span><span>Ativo</span>
+          <span>Nome</span><span>Acesso</span><span>Conta do Google</span><span>Perfil</span>
+          <span>Aviso</span><span>Calendário</span><span>Ativo</span><span></span>
         </div>
         {usuarios.map((u) => (
           <div className="tabela-row" key={u.id}>
             <span data-label="Nome">{u.nome}</span>
-            <span data-label="E-mail">{u.email}</span>
+            <span data-label="Acesso">{u.email}</span>
+            <span data-label="Conta do Google">
+              {u.email_google ? (
+                u.email_google
+              ) : (
+                <em className="miss">usa o de acesso</em>
+              )}
+            </span>
             <span data-label="Perfil">
               <span className={u.perfil === 'admin' ? 'badge admin' : 'badge'}>{u.perfil}</span>
             </span>
-            <span data-label="Recebe aviso">
+            <span data-label="Aviso">
               <input type="checkbox" checked={u.recebe_aviso} disabled={!ehAdmin}
                 onChange={() => alternar(u, 'recebe_aviso')} />
             </span>
@@ -159,9 +172,26 @@ function Equipe({ ehAdmin }) {
               <input type="checkbox" checked={u.ativo} disabled={!ehAdmin}
                 onChange={() => alternar(u, 'ativo')} />
             </span>
+            <span data-label="">
+              {ehAdmin && (
+                <button className="editar" onClick={() => setEditando(u)}>Editar</button>
+              )}
+            </span>
           </div>
         ))}
       </div>
+
+      {editando && (
+        <EditarPessoa
+          pessoa={editando}
+          onFechar={() => setEditando(null)}
+          onSalvo={(msg) => {
+            setEditando(null);
+            setOk(msg);
+            carregar();
+          }}
+        />
+      )}
 
       {ehAdmin && (
         <form className="form-inline" onSubmit={adicionar}>
@@ -170,8 +200,16 @@ function Equipe({ ehAdmin }) {
             <label className="field"><span>Nome</span>
               <input value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} required />
             </label>
-            <label className="field"><span>E-mail do Google</span>
+            <label className="field"><span>E-mail de acesso</span>
               <input type="email" value={novo.email} onChange={(e) => setNovo({ ...novo, email: e.target.value })} required />
+            </label>
+            <label className="field"><span>Conta do Google (se for outra)</span>
+              <input
+                type="email"
+                value={novo.email_google}
+                onChange={(e) => setNovo({ ...novo, email_google: e.target.value })}
+                placeholder="Deixe vazio para usar o de acesso"
+              />
             </label>
             <label className="field"><span>Telefone</span>
               <input value={novo.telefone} onChange={(e) => setNovo({ ...novo, telefone: e.target.value })} placeholder="(51) 9..." />
@@ -195,6 +233,134 @@ function Equipe({ ehAdmin }) {
         </form>
       )}
     </section>
+  );
+}
+
+function EditarPessoa({ pessoa, onFechar, onSalvo }) {
+  const [f, setF] = useState({
+    nome: pessoa.nome || '',
+    email: pessoa.email || '',
+    email_google: pessoa.email_google || '',
+    telefone: pessoa.telefone || '',
+    perfil: pessoa.perfil,
+    senha: '',
+  });
+  const [erro, setErro] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    const aoTeclar = (e) => e.key === 'Escape' && onFechar();
+    window.addEventListener('keydown', aoTeclar);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', aoTeclar);
+      document.body.style.overflow = '';
+    };
+  }, [onFechar]);
+
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+
+  async function salvar(e) {
+    e.preventDefault();
+    setErro(null);
+    setSalvando(true);
+    try {
+      const dados = {
+        nome: f.nome,
+        email: f.email,
+        email_google: f.email_google,
+        telefone: f.telefone,
+        perfil: f.perfil,
+      };
+      // Senha em branco significa manter a atual
+      if (f.senha) dados.senha = f.senha;
+
+      await atualizarUsuario(pessoa.id, dados);
+
+      const trocouConta =
+        (f.email_google || f.email).toLowerCase().trim() !==
+        (pessoa.email_google || pessoa.email).toLowerCase().trim();
+
+      onSalvo(
+        trocouConta
+          ? `Dados salvos. O calendário foi compartilhado com ${(f.email_google || f.email).toLowerCase().trim()}.`
+          : 'Dados salvos.'
+      );
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="modalFundo" onClick={onFechar}>
+      <div className="modalCaixa estreita" onClick={(e) => e.stopPropagation()}>
+        <div className="modalTopo">
+          <div>
+            <h2>Editar pessoa</h2>
+            <p className="hint" style={{ margin: 0 }}>{pessoa.nome}</p>
+          </div>
+          <button className="modalFechar" onClick={onFechar} title="Fechar">✕</button>
+        </div>
+
+        <form className="form" onSubmit={salvar}>
+          {erro && <div className="error">{erro}</div>}
+
+          <label className="field"><span>Nome</span>
+            <input value={f.nome} onChange={(e) => set('nome', e.target.value)} required />
+          </label>
+
+          <label className="field"><span>E-mail de acesso</span>
+            <input type="email" value={f.email} onChange={(e) => set('email', e.target.value)} required />
+          </label>
+          <p className="hint" style={{ marginTop: '-8px' }}>
+            É com este e-mail que a pessoa entra no sistema.
+          </p>
+
+          <label className="field"><span>Conta do Google</span>
+            <input
+              type="email"
+              value={f.email_google}
+              onChange={(e) => set('email_google', e.target.value)}
+              placeholder="Deixe vazio para usar o e-mail de acesso"
+            />
+          </label>
+          <p className="hint" style={{ marginTop: '-8px' }}>
+            É nesta conta que o calendário é compartilhado e onde os lembretes tocam.
+            Preencha quando o Google Agenda do celular for outro endereço.
+          </p>
+
+          <label className="field"><span>Telefone</span>
+            <input value={f.telefone} onChange={(e) => set('telefone', e.target.value)} placeholder="(51) 9..." />
+          </label>
+
+          <label className="field"><span>Perfil</span>
+            <select value={f.perfil} onChange={(e) => set('perfil', e.target.value)}>
+              <option value="vendedor">Vendedor</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </label>
+
+          <label className="field"><span>Nova senha</span>
+            <input
+              type="password"
+              value={f.senha}
+              minLength={8}
+              onChange={(e) => set('senha', e.target.value)}
+              placeholder="Deixe vazio para manter a atual"
+            />
+          </label>
+
+          <div className="formFoot">
+            <button type="button" className="btn-sair" onClick={onFechar}>Cancelar</button>
+            <button type="submit" className="btn-primary" disabled={salvando}>
+              {salvando ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 

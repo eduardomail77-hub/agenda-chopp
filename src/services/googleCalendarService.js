@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { google } from 'googleapis';
 import { query } from '../db/connection.js';
 
@@ -160,6 +161,7 @@ export async function createGoogleCalendarEvent(pedido) {
 
   const entrega = await calendar.events.insert({
     calendarId,
+    sendUpdates: 'none',
     requestBody: await montarEvento(pedido, 'entrega'),
   });
 
@@ -167,6 +169,7 @@ export async function createGoogleCalendarEvent(pedido) {
   if (pedido.data_coleta) {
     const coleta = await calendar.events.insert({
       calendarId,
+      sendUpdates: 'none',
       requestBody: await montarEvento(pedido, 'coleta'),
     });
     coletaId = coleta.data.id;
@@ -174,6 +177,19 @@ export async function createGoogleCalendarEvent(pedido) {
 
   console.log('Eventos criados no Google Agenda:', entrega.data.id, coletaId);
   return { entrega: entrega.data.id, coleta: coletaId };
+}
+
+/**
+ * Impressão do que o evento mostra hoje. Serve para decidir se vale mesmo
+ * mexer na agenda: reescrever evento sem mudança faz o Google disparar
+ * "evento alterado" para a equipe inteira, e vira enxurrada de e-mail.
+ */
+export async function assinaturaDoEvento(pedido) {
+  const conteudo = JSON.stringify([
+    await montarEvento(pedido, 'entrega'),
+    pedido.data_coleta ? await montarEvento(pedido, 'coleta') : null,
+  ]);
+  return crypto.createHash('sha256').update(conteudo).digest('hex');
 }
 
 export async function updateGoogleCalendarEvent(pedido) {
@@ -186,6 +202,7 @@ export async function updateGoogleCalendarEvent(pedido) {
     await calendar.events.update({
       calendarId,
       eventId: entregaId,
+      sendUpdates: 'none',
       requestBody: await montarEvento(pedido, 'entrega'),
     });
   }
@@ -195,12 +212,14 @@ export async function updateGoogleCalendarEvent(pedido) {
       await calendar.events.update({
         calendarId,
         eventId: coletaId,
+        sendUpdates: 'none',
         requestBody: await montarEvento(pedido, 'coleta'),
       });
     } else {
       // Data de recolhimento preenchida depois da confirmação
       const novo = await calendar.events.insert({
         calendarId,
+        sendUpdates: 'none',
         requestBody: await montarEvento(pedido, 'coleta'),
       });
       coletaId = novo.data.id;
@@ -338,10 +357,11 @@ export async function avisarCotacaoNova(cotacao) {
 export async function sincronizarAcessos() {
   try {
     const { rows } = await query(
-      'SELECT email FROM usuarios WHERE ativo = true AND recebe_aviso = true'
+      `SELECT COALESCE(NULLIF(email_google, ''), email) AS conta
+       FROM usuarios WHERE ativo = true AND recebe_aviso = true`
     );
-    for (const { email } of rows) {
-      await compartilharCalendario(email);
+    for (const { conta } of rows) {
+      await compartilharCalendario(conta);
     }
     if (rows.length) console.log(`✓ Acesso ao calendário conferido para ${rows.length} pessoa(s)`);
   } catch (err) {
