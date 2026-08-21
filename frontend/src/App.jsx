@@ -104,7 +104,7 @@ export default function App() {
     <div className="wrap">
       <header className="top">
         <div className="brand">
-          <span className="mark">▲</span>
+          <img className="marca" src="/logo-fora-da-lei.png" alt="Fora da Lei" />
           <div>
             <h1>Agenda de Chopp</h1>
             <p>Fora da Lei · entregas e chopeiras</p>

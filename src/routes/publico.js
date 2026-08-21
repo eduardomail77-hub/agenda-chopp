@@ -52,6 +52,7 @@ router.get('/catalogo', async (req, res) => {
 });
 
 const TIPOS_CHOPEIRA = ['eletrica', 'gelo', 'indiferente'];
+const BARRIL = 30;
 const LIMITES = { cliente: 120, telefone: 30, endereco: 300, observacoes: 500, cerveja: 120 };
 
 router.post('/cotacoes', limitarEnvios, async (req, res) => {
@@ -106,6 +107,16 @@ router.post('/cotacoes', limitarEnvios, async (req, res) => {
 
     if (itensLimpos.length === 0) {
       return res.status(400).json({ erro: 'Escolha pelo menos uma cerveja do catálogo' });
+    }
+
+    // O chopp sai em barris de 30 litros
+    const foraDoBarril = itensLimpos.find(
+      (i) => !i.litros || i.litros < BARRIL || i.litros % BARRIL !== 0
+    );
+    if (foraDoBarril) {
+      return res.status(400).json({
+        erro: `A quantidade de cada cerveja precisa ser múltipla de ${BARRIL} litros, com mínimo de ${BARRIL}.`,
+      });
     }
 
     const cotacao = await transacao(async (client) => {

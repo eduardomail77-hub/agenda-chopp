@@ -10,6 +10,13 @@ const TIPOS = [
 
 const hoje = new Date().toISOString().split('T')[0];
 
+// O chopp é servido em barris de 30 litros, então o pedido acompanha o barril
+const BARRIL = 30;
+const litrosValidos = (v) => {
+  const n = Number(v);
+  return n >= BARRIL && n % BARRIL === 0;
+};
+
 export default function CotacaoPublica() {
   const [cervejas, setCervejas] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -49,8 +56,13 @@ export default function CotacaoPublica() {
   const rmItem = (i) =>
     setF((p) => ({ ...p, itens: p.itens.filter((_, idx) => idx !== i) }));
 
+  const escolhidas = f.itens.filter((i) => i.cerveja);
   const valido =
-    f.cliente.trim() && f.telefone.trim() && f.data_entrega && f.itens.some((i) => i.cerveja);
+    f.cliente.trim() &&
+    f.telefone.trim() &&
+    f.data_entrega &&
+    escolhidas.length > 0 &&
+    escolhidas.every((i) => litrosValidos(i.litros));
 
   async function enviar(e) {
     e.preventDefault();
@@ -78,7 +90,7 @@ export default function CotacaoPublica() {
     return (
       <div className="cotacaoWrap">
         <div className="cotacaoCard sucesso">
-          <span className="mark grande">▲</span>
+          <img className="marca grande" src="/logo-fora-da-lei.png" alt="Fora da Lei" />
           <h1>Recebemos seu pedido</h1>
           <p className="protocolo">Cotação nº {protocolo}</p>
           <p>
@@ -95,7 +107,7 @@ export default function CotacaoPublica() {
     <div className="cotacaoWrap">
       <form className="cotacaoCard" onSubmit={enviar}>
         <header className="cotacaoTopo">
-          <span className="mark grande">▲</span>
+          <img className="marca grande" src="/logo-fora-da-lei.png" alt="Fora da Lei" />
           <div>
             <h1>Peça sua cotação de chopp</h1>
             <p>
@@ -190,43 +202,60 @@ export default function CotacaoPublica() {
 
         <section className="cotacaoBloco">
           <h2>Qual chopp você quer</h2>
+          <p className="regraBarril">
+            O chopp vem em barris de {BARRIL} litros. O pedido mínimo é {BARRIL} L e a
+            quantidade sempre vai de {BARRIL} em {BARRIL}, por exemplo 30, 60, 90.
+          </p>
           {carregando ? (
             <div className="loading">Carregando cervejas...</div>
           ) : (
             <>
-              {f.itens.map((it, i) => (
-                <div className="cotacaoItem" key={i}>
-                  <label className="field">
-                    <span>Cerveja</span>
-                    <select
-                      value={it.cerveja}
-                      onChange={(e) => setItem(i, 'cerveja', e.target.value)}
-                    >
-                      <option value="">Escolha um rótulo</option>
-                      {cervejas.map((c) => (
-                        <option key={c.nome} value={c.nome}>
-                          {c.nome} — {c.estilo}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field">
-                    <span>Litros</span>
-                    <input
-                      type="number"
-                      min="1"
-                      value={it.litros}
-                      onChange={(e) => setItem(i, 'litros', e.target.value)}
-                      placeholder="Ex.: 50"
-                    />
-                  </label>
-                  {f.itens.length > 1 && (
-                    <button type="button" className="rmItem" onClick={() => rmItem(i)} title="Remover">
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
+              {f.itens.map((it, i) => {
+                const forade = it.litros !== '' && !litrosValidos(it.litros);
+                return (
+                  <div key={i}>
+                    <div className="cotacaoItem">
+                      <label className="field">
+                        <span>Cerveja</span>
+                        <select
+                          value={it.cerveja}
+                          onChange={(e) => setItem(i, 'cerveja', e.target.value)}
+                        >
+                          <option value="">Escolha um rótulo</option>
+                          {cervejas.map((c) => (
+                            <option key={c.nome} value={c.nome}>
+                              {c.nome} — {c.estilo}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="field">
+                        <span>Litros</span>
+                        <input
+                          type="number"
+                          min={BARRIL}
+                          step={BARRIL}
+                          value={it.litros}
+                          onChange={(e) => setItem(i, 'litros', e.target.value)}
+                          placeholder="Ex.: 30"
+                        />
+                      </label>
+                      {f.itens.length > 1 && (
+                        <button type="button" className="rmItem" onClick={() => rmItem(i)} title="Remover">
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    {forade && (
+                      <p className="avisoBarril">
+                        {Number(it.litros) < BARRIL
+                          ? `O mínimo é ${BARRIL} litros.`
+                          : `Use múltiplos de ${BARRIL}: ${Math.floor(Number(it.litros) / BARRIL) * BARRIL} ou ${Math.ceil(Number(it.litros) / BARRIL) * BARRIL} litros.`}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
               <button type="button" className="addItem" onClick={addItem}>
                 + Adicionar outra cerveja
               </button>

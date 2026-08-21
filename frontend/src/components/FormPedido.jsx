@@ -4,6 +4,14 @@ import Field from './common/Field';
 
 const viasTxt = (v) => `${v} via${v > 1 ? 's' : ''}`;
 
+// O chopp vem em barris de 30 litros. Aqui é aviso, não bloqueio:
+// a equipe às vezes fecha um volume diferente e precisa conseguir lançar.
+const BARRIL = 30;
+const foraDoBarril = (v) => {
+  const n = Number(v);
+  return n > 0 && (n < BARRIL || n % BARRIL !== 0);
+};
+
 const brl = (n) =>
   (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -311,6 +319,9 @@ export default function FormPedido({
 
       <div className="fblock">
         <label className="lbl">Cervejas do pedido</label>
+        <p className="regraBarril">
+          Barril de {BARRIL} L. Pedido mínimo {BARRIL} L, em múltiplos de {BARRIL}.
+        </p>
         <div className="itemHead">
           <span>Rótulo</span>
           <span>Litros</span>
@@ -318,35 +329,46 @@ export default function FormPedido({
           <span></span>
         </div>
         {f.itens.map((it, i) => (
-          <div className="itemRow" key={i}>
-            <select value={it.cerveja} onChange={(e) => setItem(i, 'cerveja', e.target.value)}>
-              {cervejas.map((c) => (
-                <option key={c.nome} value={c.nome}>
-                  {c.nome} — {c.estilo}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              placeholder="0"
-              value={it.litros}
-              onChange={(e) => setItem(i, 'litros', e.target.value)}
-            />
-            <input
-              type="number"
-              placeholder="0,00"
-              value={it.valor_litro}
-              onChange={(e) => setItem(i, 'valor_litro', e.target.value)}
-            />
-            <button
-              type="button"
-              className="rmItem"
-              onClick={() => rmItem(i)}
-              disabled={f.itens.length === 1}
-              title="Remover"
-            >
-              ✕
-            </button>
+          <div key={i}>
+            <div className="itemRow">
+              <select value={it.cerveja} onChange={(e) => setItem(i, 'cerveja', e.target.value)}>
+                {cervejas.map((c) => (
+                  <option key={c.nome} value={c.nome}>
+                    {c.nome} — {c.estilo}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={BARRIL}
+                step={BARRIL}
+                placeholder="30"
+                value={it.litros}
+                onChange={(e) => setItem(i, 'litros', e.target.value)}
+              />
+              <input
+                type="number"
+                placeholder="0,00"
+                value={it.valor_litro}
+                onChange={(e) => setItem(i, 'valor_litro', e.target.value)}
+              />
+              <button
+                type="button"
+                className="rmItem"
+                onClick={() => rmItem(i)}
+                disabled={f.itens.length === 1}
+                title="Remover"
+              >
+                ✕
+              </button>
+            </div>
+            {foraDoBarril(it.litros) && (
+              <p className="avisoBarril">
+                {Number(it.litros) < BARRIL
+                  ? `Abaixo do mínimo de ${BARRIL} L.`
+                  : `Não fecha barril inteiro. Mais perto: ${Math.floor(Number(it.litros) / BARRIL) * BARRIL} ou ${Math.ceil(Number(it.litros) / BARRIL) * BARRIL} L.`}
+              </p>
+            )}
           </div>
         ))}
         <button type="button" className="addItem" onClick={addItem}>
