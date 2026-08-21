@@ -107,14 +107,11 @@ export default function CotacaoPublica() {
     <div className="cotacaoWrap">
       <form className="cotacaoCard" onSubmit={enviar}>
         <header className="cotacaoTopo">
-          <img className="marca grande" src="/logo-fora-da-lei.png" alt="Fora da Lei" />
-          <div>
-            <h1>Peça sua cotação de chopp</h1>
-            <p>
-              Cervejaria Fora da Lei · preencha os dados do seu evento e a gente
-              retorna o orçamento pelo WhatsApp
-            </p>
-          </div>
+          <img className="marca grande" src="/logo-fora-da-lei.png" alt="Fora da Lei Craft Beer" />
+          <h1>Peça sua cotação de chopp</h1>
+          <p>
+            Preencha os dados do seu evento e a gente retorna o orçamento pelo WhatsApp
+          </p>
         </header>
 
         {erro && <div className="error">{erro}</div>}

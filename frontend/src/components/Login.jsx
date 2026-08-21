@@ -25,11 +25,9 @@ export default function Login({ onEntrar }) {
     <div className="login-wrap">
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="login-brand">
-          <img className="marca" src="/logo-fora-da-lei.png" alt="Fora da Lei" />
-          <div>
-            <h1>Agenda de Chopp</h1>
-            <p>Fora da Lei · entregas e chopeiras</p>
-          </div>
+          <img className="marca grande" src="/logo-fora-da-lei.png" alt="Fora da Lei Craft Beer" />
+          <h1>Agenda de Chopp</h1>
+          <p>Entregas e chopeiras</p>
         </div>
 
         {erro && <div className="error">{erro}</div>}
