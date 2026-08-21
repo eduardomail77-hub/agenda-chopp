@@ -1,14 +1,11 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import pedidosRoutes from './routes/pedidos.js';
 import recursosRoutes from './routes/recursos.js';
 import publicoRoutes from './routes/publico.js';
 import adminRoutes from './routes/admin.js';
 import debugRoutes from './routes/debug.js';
 import { initializeDatabase } from './db/init.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
