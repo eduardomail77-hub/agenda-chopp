@@ -1,29 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { execSync } from 'child_process';
 import pedidosRoutes from './routes/pedidos.js';
 import recursosRoutes from './routes/recursos.js';
 import publicoRoutes from './routes/publico.js';
 
 dotenv.config();
 
-// Run migrations on startup
-async function initDb() {
-  try {
-    console.log('🔧 Iniciando setup do banco de dados...');
-    execSync('node src/db/migrate.js', { stdio: 'inherit' });
-    console.log('✓ Banco de dados pronto');
-  } catch (err) {
-    console.warn('⚠️ Aviso ao configurar banco:', err.message);
-  }
-}
-
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Initialize database before starting server
-await initDb();
 
 // Middleware
 app.use(cors());
