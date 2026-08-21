@@ -3,7 +3,7 @@ import { query } from '../db/connection.js';
 export async function getChopeiras(req, res) {
   try {
     const result = await query(
-      'SELECT * FROM chopeiras WHERE ativo = true ORDER BY id ASC'
+      'SELECT * FROM chopeiras ORDER BY id ASC'
     );
     res.json(result.rows);
   } catch (err) {
@@ -26,7 +26,6 @@ export async function getChopeirasDisponiveisPorData(req, res) {
          JOIN pedido_chopeiras pc ON p.id = pc.pedido_id
          WHERE pc.chopeira_id = c.id AND p.data_entrega = $1 AND p.status = 'confirmado') as ocupada_por
       FROM chopeiras c
-      WHERE c.ativo = true
       ORDER BY c.id ASC`,
       [data]
     );
@@ -41,7 +40,7 @@ export async function getChopeirasDisponiveisPorData(req, res) {
 export async function getCervejas(req, res) {
   try {
     const result = await query(
-      'SELECT * FROM cervejas WHERE ativo = true ORDER BY nome ASC'
+      'SELECT * FROM cervejas ORDER BY nome ASC'
     );
     res.json(result.rows);
   } catch (err) {
