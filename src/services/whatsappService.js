@@ -102,11 +102,18 @@ export async function avisarCotacaoPorWhatsApp(cotacao) {
 
   let enviados = 0;
   for (const admin of rows) {
+    // Só os 4 últimos dígitos no log, o bastante pra depurar sem expor o número inteiro
+    const marcado = String(admin.telefone).replace(/\D/g, '').slice(-4);
     try {
       const r = await enviarTemplate(admin.telefone, parametros);
-      if (r.ok) enviados += 1;
+      if (r.ok) {
+        enviados += 1;
+        console.log(`WhatsApp enviado para ${admin.nome} (...${marcado}), id ${r.id}`);
+      } else {
+        console.error(`WhatsApp NÃO enviado para ${admin.nome} (...${marcado}):`, r.erro);
+      }
     } catch (err) {
-      console.error(`Falhou o WhatsApp para ${admin.nome}:`, err.message);
+      console.error(`Falhou o WhatsApp para ${admin.nome} (...${marcado}):`, err.message);
     }
   }
 
