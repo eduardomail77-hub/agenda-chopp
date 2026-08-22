@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   getCotacoes,
   atualizarCotacao,
@@ -127,6 +127,8 @@ export default function Cotacoes({ ehAdmin, onConvertida }) {
     <main className="body">
       {erro && <div className="error">{erro}</div>}
 
+      <LinkCotacao />
+
       <div className="subtabs">
         {[
           ['nova', `Novas${novas ? ` (${novas})` : ''}`],
@@ -173,6 +175,36 @@ export default function Cotacoes({ ehAdmin, onConvertida }) {
         />
       )}
     </main>
+  );
+}
+
+const LINK_COTACAO = `${window.location.origin}/cotacao`;
+
+function LinkCotacao() {
+  const [copiado, setCopiado] = useState(false);
+  const inputRef = useRef(null);
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(LINK_COTACAO);
+    } catch {
+      // Sem permissão de clipboard (http, navegador antigo): copia selecionando o campo
+      inputRef.current?.select();
+      document.execCommand('copy');
+    }
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  }
+
+  return (
+    <div className="linkCotacao">
+      <span className="linkCotacaoLabel">Link para cotações</span>
+      <input ref={inputRef} className="linkCotacaoInput" readOnly value={LINK_COTACAO}
+        onFocus={(e) => e.target.select()} />
+      <button type="button" className="btn-primary" onClick={copiar}>
+        {copiado ? 'Copiado!' : 'Copiar'}
+      </button>
+    </div>
   );
 }
 
