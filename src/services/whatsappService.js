@@ -27,6 +27,19 @@ const limpar = (texto, max = 120) =>
     .trim()
     .slice(0, max) || 'não informado';
 
+/**
+ * Coluna DATE do Postgres chega aqui como objeto Date do JS (meia-noite UTC),
+ * não como texto. `String(date)` produz "Sat Aug 22 2026 00:00:00 GMT..." em
+ * vez de "2026-08-22", o que já quebrou tanto a data mostrada numa mensagem
+ * quanto a comparação "é hoje?" na agenda diária. Sempre passar por aqui antes
+ * de tratar uma data como texto.
+ */
+const soData = (v) => {
+  if (!v) return null;
+  if (v instanceof Date) return v.toISOString().split('T')[0];
+  return String(v).split('T')[0];
+};
+
 async function enviarTemplate(numero, nomeModelo, parametros) {
   const to = normalizar(numero);
   if (!to) return { ok: false, erro: 'telefone inválido' };
@@ -91,7 +104,7 @@ export async function avisarCotacaoPorWhatsApp(cotacao) {
     'não informado';
 
   const data = cotacao.data_entrega
-    ? String(cotacao.data_entrega).split('T')[0].split('-').reverse().join('/')
+    ? soData(cotacao.data_entrega).split('-').reverse().join('/')
     : 'a combinar';
   const hora = cotacao.hora_entrega ? ` ${String(cotacao.hora_entrega).slice(0, 5)}` : '';
 
@@ -123,7 +136,6 @@ export async function avisarCotacaoPorWhatsApp(cotacao) {
   return { enviados, total: rows.length };
 }
 
-const soData = (v) => (v ? String(v).split('T')[0] : null);
 const soHora = (v) => (v ? String(v).slice(0, 5) : null);
 
 /**
