@@ -64,6 +64,10 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
+  // Origem barrada não é falha do servidor, é a regra funcionando
+  if (err?.message === 'Origem não autorizada') {
+    return res.status(403).json({ erro: 'Origem não autorizada' });
+  }
   console.error('Erro não tratado:', err);
   res.status(500).json({ erro: 'Erro interno do servidor' });
 });

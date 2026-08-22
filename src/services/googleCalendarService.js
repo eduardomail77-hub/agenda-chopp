@@ -300,8 +300,14 @@ export async function removerAcessoCalendario(email) {
 export async function avisarCotacaoNova(cotacao) {
   const calendarId = await garantirCalendario();
 
+  /*
+   * O evento começa alguns minutos à frente de propósito.
+   * Lembrete marcado para o instante da criação nunca toca: quando o Google
+   * recebe o evento, a hora do lembrete já passou.
+   */
   const agora = new Date();
-  const fim = new Date(agora.getTime() + 15 * 60 * 1000);
+  const inicio = new Date(agora.getTime() + 2 * 60 * 1000);
+  const fim = new Date(inicio.getTime() + 15 * 60 * 1000);
   const cervejas =
     cotacao.itens?.map((i) => `${i.cerveja}${i.litros ? ` (${Number(i.litros)}L)` : ''}`).join(', ') ||
     'não informado';
@@ -339,7 +345,7 @@ export async function avisarCotacaoNova(cotacao) {
     requestBody: {
       summary: `Cotação nova · ${cotacao.cliente}`,
       description: descricao,
-      start: { dateTime: agora.toISOString(), timeZone: FUSO },
+      start: { dateTime: inicio.toISOString(), timeZone: FUSO },
       end: { dateTime: fim.toISOString(), timeZone: FUSO },
       reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 0 }] },
     },
