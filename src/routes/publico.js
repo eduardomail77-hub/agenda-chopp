@@ -1,6 +1,7 @@
 import express from 'express';
 import { query, transacao } from '../db/connection.js';
 import { avisarCotacaoNova } from '../services/googleCalendarService.js';
+import { avisarCotacaoPorWhatsApp } from '../services/whatsappService.js';
 
 const router = express.Router();
 
@@ -149,9 +150,16 @@ router.post('/cotacoes', limitarEnvios, async (req, res) => {
       return nova;
     });
 
-    // O aviso não pode derrubar o envio do cliente
-    avisarCotacaoNova({ ...cotacao, itens: itensLimpos }).catch((err) =>
-      console.error('Falhou o aviso de cotação nova:', err.message)
+    // Nenhum aviso pode derrubar o envio do cliente, por isso não têm await.
+    // São dois caminhos de propósito: o WhatsApp chega na hora, e o evento na
+    // agenda fica como registro e rede de apoio se o WhatsApp falhar.
+    const comItens = { ...cotacao, itens: itensLimpos };
+
+    avisarCotacaoPorWhatsApp(comItens).catch((err) =>
+      console.error('Falhou o aviso de cotação por WhatsApp:', err.message)
+    );
+    avisarCotacaoNova(comItens).catch((err) =>
+      console.error('Falhou o aviso de cotação na agenda:', err.message)
     );
 
     res.status(201).json({

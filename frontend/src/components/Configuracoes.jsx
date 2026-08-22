@@ -13,6 +13,7 @@ import {
   criarChopeira,
   atualizarChopeira,
   getStatusGoogle,
+  getStatusWhatsApp,
   trocarSenha,
 } from '../services/api';
 
@@ -339,6 +340,7 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
 function Lembretes({ ehAdmin }) {
   const [selecionados, setSelecionados] = useState([]);
   const [status, setStatus] = useState(null);
+  const [zap, setZap] = useState(null);
   const [erro, setErro] = useState(null);
   const [ok, setOk] = useState(null);
 
@@ -347,6 +349,7 @@ function Lembretes({ ehAdmin }) {
       .then((p) => setSelecionados((p.lembretes || '').split(',').filter(Boolean).map(Number)))
       .catch((e) => setErro(e.message));
     getStatusGoogle().then(setStatus).catch(() => {});
+    getStatusWhatsApp().then(setZap).catch(() => {});
   }, []);
 
   function alternar(minutos) {
@@ -381,6 +384,21 @@ function Lembretes({ ehAdmin }) {
           {status.ok
             ? `Google Agenda conectado: ${status.calendario}`
             : `Google Agenda com problema: ${status.erro}`}
+        </div>
+      )}
+
+      {zap && (
+        <div className={zap.ok ? 'ok' : 'error'}>
+          {zap.ok ? (
+            <>
+              WhatsApp conectado: {zap.nome} ({zap.numero}), modelo <strong>{zap.template}</strong>.{' '}
+              {zap.admins_com_telefone > 0
+                ? `${zap.admins_com_telefone} administrador(es) vão receber aviso de cotação nova.`
+                : 'Nenhum administrador tem telefone cadastrado, então ninguém recebe. Preencha o telefone em Equipe.'}
+            </>
+          ) : (
+            <>Aviso de cotação por WhatsApp desligado: {zap.erro}</>
+          )}
         </div>
       )}
 

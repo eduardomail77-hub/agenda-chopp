@@ -125,6 +125,7 @@ export const atualizarChopeira = (id, data) =>
   req(`/config/chopeiras/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
 export const getStatusGoogle = () => req('/config/google/status');
+export const getStatusWhatsApp = () => req('/config/whatsapp/status');
 
 /* ---------- Cotações ---------- */
 

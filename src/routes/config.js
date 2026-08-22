@@ -8,6 +8,7 @@ import {
   listarAcessos,
   testarConexao,
 } from '../services/googleCalendarService.js';
+import { testarWhatsApp } from '../services/whatsappService.js';
 
 const router = express.Router();
 
@@ -18,6 +19,10 @@ router.use(exigirLogin);
 
 router.get('/google/status', async (req, res) => {
   res.json(await testarConexao());
+});
+
+router.get('/whatsapp/status', async (req, res) => {
+  res.json(await testarWhatsApp());
 });
 
 /* ---------- Equipe ---------- */
