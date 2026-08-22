@@ -8,6 +8,7 @@ import publicoRoutes from './routes/publico.js';
 import cotacoesRoutes from './routes/cotacoes.js';
 import { exigirLogin, exigirAdmin } from './middleware/auth.js';
 import { initializeDatabase } from './db/init.js';
+import { iniciarAgendador } from './services/agendador.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -81,5 +82,6 @@ app.listen(PORT, async () => {
     } catch (err) {
       console.error('✗ Erro na inicialização do banco:', err.message);
     }
+    iniciarAgendador();
   }
 });

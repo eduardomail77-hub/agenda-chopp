@@ -8,7 +8,7 @@ import {
   listarAcessos,
   testarConexao,
 } from '../services/googleCalendarService.js';
-import { testarWhatsApp } from '../services/whatsappService.js';
+import { testarWhatsApp, enviarAgendaDiaria } from '../services/whatsappService.js';
 
 const router = express.Router();
 
@@ -23,6 +23,16 @@ router.get('/google/status', async (req, res) => {
 
 router.get('/whatsapp/status', async (req, res) => {
   res.json(await testarWhatsApp());
+});
+
+/** Dispara a agenda diária na hora, sem esperar as 9h — útil pra testar. */
+router.post('/whatsapp/agenda-diaria/testar', exigirAdmin, async (req, res) => {
+  try {
+    res.json(await enviarAgendaDiaria());
+  } catch (err) {
+    console.error('Erro ao testar agenda diária:', err.message);
+    res.status(500).json({ erro: 'Erro ao enviar a agenda diária' });
+  }
 });
 
 /* ---------- Equipe ---------- */

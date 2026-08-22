@@ -126,6 +126,8 @@ export const atualizarChopeira = (id, data) =>
 
 export const getStatusGoogle = () => req('/config/google/status');
 export const getStatusWhatsApp = () => req('/config/whatsapp/status');
+export const testarAgendaDiaria = () =>
+  req('/config/whatsapp/agenda-diaria/testar', { method: 'POST' });
 
 /* ---------- Cotações ---------- */
 

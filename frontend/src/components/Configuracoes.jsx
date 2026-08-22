@@ -14,6 +14,7 @@ import {
   atualizarChopeira,
   getStatusGoogle,
   getStatusWhatsApp,
+  testarAgendaDiaria,
   trocarSenha,
 } from '../services/api';
 
@@ -341,6 +342,7 @@ function Lembretes({ ehAdmin }) {
   const [selecionados, setSelecionados] = useState([]);
   const [status, setStatus] = useState(null);
   const [zap, setZap] = useState(null);
+  const [testando, setTestando] = useState(false);
   const [erro, setErro] = useState(null);
   const [ok, setOk] = useState(null);
 
@@ -369,6 +371,24 @@ function Lembretes({ ehAdmin }) {
       await salvarPreferencias({ lembretes: ordenados.join(',') });
       setOk('Lembretes salvos. Valem para os próximos pedidos confirmados.');
     } catch (e) { setErro(e.message); }
+  }
+
+  async function testarAgenda() {
+    setErro(null); setOk(null);
+    setTestando(true);
+    try {
+      const r = await testarAgendaDiaria();
+      if (r.enviados > 0) {
+        setOk(`Enviada agora: ${r.eventos} evento(s) do dia, para ${r.enviados} pessoa(s).`);
+      } else if (r.motivo === 'sem entregas hoje') {
+        setOk('Nada marcado para hoje, então não há o que enviar (é assim mesmo: só dispara quando tem entrega ou coleta no dia).');
+      } else if (r.motivo === 'ninguém com telefone') {
+        setErro(`Tem ${r.eventos} evento(s) hoje, mas ninguém envolvido tem telefone cadastrado.`);
+      } else {
+        setErro(`Não enviou: ${r.motivo || 'motivo desconhecido'}.`);
+      }
+    } catch (e) { setErro(e.message); }
+    finally { setTestando(false); }
   }
 
   return (
@@ -415,6 +435,18 @@ function Lembretes({ ehAdmin }) {
       </div>
 
       {ehAdmin && <button className="btn-primary" onClick={salvar}>Salvar lembretes</button>}
+
+      <h3 style={{ marginTop: '28px' }}>Agenda diária por WhatsApp</h3>
+      <p className="hint">
+        Todo dia às 9h, se houver entrega ou coleta marcada pra hoje, sai uma mensagem com a
+        agenda do dia. Vai pros administradores e pra quem estiver como responsável de entrega
+        ou coleta em algum pedido de hoje. Sem nada marcado, não envia nada.
+      </p>
+      {ehAdmin && (
+        <button className="btn-primary" onClick={testarAgenda} disabled={testando}>
+          {testando ? 'Enviando...' : 'Testar agora'}
+        </button>
+      )}
     </section>
   );
 }
