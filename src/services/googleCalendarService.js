@@ -68,13 +68,17 @@ function inicioFim(data, hora, duracaoMin = 60) {
   const h = (hora || '10:00').slice(0, 5);
   const inicio = `${soData(data)}T${h}:00`;
 
+  // O fim é calculado com a data junto: evento às 23:59 termina já no dia
+  // seguinte, e usar só a hora gerava fim antes do início ("time range is empty").
+  const [ano, mes, dia] = soData(data).split('-').map(Number);
   const [hh, mm] = h.split(':').map(Number);
-  const fim = new Date(Date.UTC(2000, 0, 1, hh, mm + duracaoMin));
-  const fimStr = `${String(fim.getUTCHours()).padStart(2, '0')}:${String(fim.getUTCMinutes()).padStart(2, '0')}`;
+  const fim = new Date(Date.UTC(ano, mes - 1, dia, hh, mm + duracaoMin));
+  const p = (n) => String(n).padStart(2, '0');
+  const fimStr = `${fim.getUTCFullYear()}-${p(fim.getUTCMonth() + 1)}-${p(fim.getUTCDate())}T${p(fim.getUTCHours())}:${p(fim.getUTCMinutes())}:00`;
 
   return {
     start: { dateTime: inicio, timeZone: FUSO },
-    end: { dateTime: `${soData(data)}T${fimStr}:00`, timeZone: FUSO },
+    end: { dateTime: fimStr, timeZone: FUSO },
   };
 }
 
