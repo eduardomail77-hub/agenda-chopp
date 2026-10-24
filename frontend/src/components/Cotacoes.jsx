@@ -277,6 +277,13 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
   );
   const [entrega, setEntrega] = useState(cotacao.valor_entrega_coleta ?? '');
   const [desconto, setDesconto] = useState(cotacao.desconto ?? '');
+  const [quando, setQuando] = useState({
+    data_entrega: soData(cotacao.data_entrega),
+    hora_entrega: hora(cotacao.hora_entrega) || '',
+    data_coleta: soData(cotacao.data_coleta),
+    hora_coleta: hora(cotacao.hora_coleta) || '',
+  });
+  const setQ = (k, v) => setQuando((p) => ({ ...p, [k]: v }));
   const [cervejas, setCervejas] = useState([]);
   const [chopeiras, setChopeiras] = useState([]);
   const [equipe, setEquipe] = useState([]);
@@ -308,6 +315,12 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
         if (cotacao.valor_entrega_coleta == null) {
           setEntrega(prefs.valor_entrega_padrao || '');
         }
+        // Cliente não é obrigado a informar hora: entra o horário padrão, editável
+        setQuando((q) => ({
+          ...q,
+          hora_entrega: q.hora_entrega || prefs.hora_entrega_padrao || '10:00',
+          hora_coleta: q.hora_coleta || prefs.hora_coleta_padrao || '10:00',
+        }));
       })
       .catch((e) => setErro(e.message));
 
@@ -342,6 +355,10 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
         })),
         valor_entrega_coleta: entrega === '' ? null : entrega,
         desconto: desconto === '' ? 0 : desconto,
+        data_entrega: quando.data_entrega || null,
+        hora_entrega: quando.hora_entrega || null,
+        data_coleta: quando.data_coleta || null,
+        hora_coleta: quando.hora_coleta || null,
         ...(novoStatus ? { status: novoStatus } : {}),
       });
       return true;
@@ -361,7 +378,8 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
     }
     if (!(await salvar('respondida'))) return;
 
-    const texto = montarMensagem(cotacao, itens, entrega, desconto);
+    // Usa os horários já ajustados aqui, não os que o cliente mandou
+    const texto = montarMensagem({ ...cotacao, ...quando }, itens, entrega, desconto);
     window.open(`https://wa.me/${zap}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
     onAtualizada();
   }
@@ -410,16 +428,35 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
 
           <div className="resumoPedido">
             {cotacao.endereco && <p><strong>Endereço:</strong> {cotacao.endereco}</p>}
-            <p>
-              <strong>Entrega:</strong> {dataBR(cotacao.data_entrega) || 'a definir'}
-              {hora(cotacao.hora_entrega) ? ` às ${hora(cotacao.hora_entrega)}` : ''}
-              {' · '}
-              <strong>Recolhimento:</strong> {dataBR(cotacao.data_coleta) || 'a combinar'}
-              {hora(cotacao.hora_coleta) ? ` às ${hora(cotacao.hora_coleta)}` : ''}
-            </p>
             <p><strong>Chopeira pedida:</strong> {TIPO_LABEL[cotacao.tipo_chopeira]}</p>
             {cotacao.pessoas && <p><strong>Pessoas:</strong> {cotacao.pessoas}</p>}
             {cotacao.observacoes && <p><strong>Observações:</strong> {cotacao.observacoes}</p>}
+          </div>
+
+          <div className="fblock">
+            <label className="lbl">Entrega e recolhimento</label>
+            <div className="fgrid">
+              <label className="field">
+                <span>Data da entrega</span>
+                <input type="date" value={quando.data_entrega}
+                  onChange={(e) => setQ('data_entrega', e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Hora da entrega</span>
+                <input type="time" value={quando.hora_entrega}
+                  onChange={(e) => setQ('hora_entrega', e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Data do recolhimento</span>
+                <input type="date" value={quando.data_coleta} min={quando.data_entrega || undefined}
+                  onChange={(e) => setQ('data_coleta', e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Hora do recolhimento</span>
+                <input type="time" value={quando.hora_coleta}
+                  onChange={(e) => setQ('hora_coleta', e.target.value)} />
+              </label>
+            </div>
           </div>
 
           <div className="fblock">
