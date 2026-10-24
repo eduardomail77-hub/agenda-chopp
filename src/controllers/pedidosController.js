@@ -5,6 +5,7 @@ import {
   deleteGoogleCalendarEvent,
   assinaturaDoEvento,
 } from '../services/googleCalendarService.js';
+import { chopeirasEmConflito, mensagemConflito } from '../utils/ocupacao.js';
 
 const soData = (v) => (v ? String(v instanceof Date ? v.toISOString() : v).split('T')[0] : null);
 
@@ -98,9 +99,16 @@ export async function createPedido(req, res) {
     if (Number(desconto) < 0 || Number(valor_entrega_coleta) < 0) {
       return res.status(400).json({ erro: 'Valores não podem ser negativos' });
     }
-    if (data_coleta && data_coleta < data_entrega) {
+    if (!hora_entrega || !data_coleta || !hora_coleta) {
+      return res.status(400).json({
+        erro: 'Hora da entrega, data e hora do recolhimento são obrigatórias',
+      });
+    }
+    if (data_coleta < data_entrega) {
       return res.status(400).json({ erro: 'O recolhimento não pode ser antes da entrega' });
     }
+    const conflitos = await chopeirasEmConflito(chopeiras, data_entrega, data_coleta);
+    if (conflitos.length) return res.status(409).json({ erro: mensagemConflito(conflitos) });
 
     const pedido = await transacao(async (client) => {
       const { rows } = await client.query(
@@ -203,6 +211,20 @@ export async function updatePedido(req, res) {
     if (temCampo('data_entrega') && !data_entrega) {
       return res.status(400).json({ erro: 'A data de entrega é obrigatória' });
     }
+    for (const campo of ['hora_entrega', 'hora_coleta', 'data_coleta']) {
+      if (temCampo(campo) && !req.body[campo]) {
+        return res.status(400).json({ erro: 'Horários e datas de entrega e recolhimento são obrigatórios' });
+      }
+    }
+
+    // Mudou data ou chopeira: confere se não bate com outro pedido confirmado
+    if (temCampo('data_entrega') || temCampo('data_coleta') || chopeiras?.length) {
+      const atuais = chopeiras?.length
+        ? chopeiras
+        : (await query('SELECT chopeira_id FROM pedido_chopeiras WHERE pedido_id = $1', [id])).rows.map((r) => r.chopeira_id);
+      const conflitos = await chopeirasEmConflito(atuais, entregaFinal, coletaFinal, id);
+      if (conflitos.length) return res.status(409).json({ erro: mensagemConflito(conflitos) });
+    }
 
     // Monta o UPDATE apenas com o que veio no corpo. Usar COALESCE aqui impediria
     // limpar um campo, por exemplo tirar o responsável que já estava definido.
@@ -300,6 +322,14 @@ export async function confirmPedido(req, res) {
     }
 
     const pedido = await carregarDetalhes(rows[0]);
+
+    const conflitos = await chopeirasEmConflito(
+      pedido.chopeiras,
+      soData(pedido.data_entrega),
+      soData(pedido.data_coleta),
+      pedido.id
+    );
+    if (conflitos.length) return res.status(409).json({ erro: mensagemConflito(conflitos) });
 
     // Se a agenda falhar, o pedido NÃO é confirmado em silêncio:
     // confirmar sem aviso é pior do que não confirmar.

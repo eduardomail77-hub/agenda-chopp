@@ -75,8 +75,10 @@ router.post('/cotacoes', limitarEnvios, async (req, res) => {
     if (!cliente?.trim() || !telefone?.trim()) {
       return res.status(400).json({ erro: 'Precisamos do seu nome e telefone' });
     }
-    if (!data_entrega) {
-      return res.status(400).json({ erro: 'Escolha a data da entrega' });
+    if (!data_entrega || !hora_entrega || !data_coleta || !hora_coleta) {
+      return res.status(400).json({
+        erro: 'Informe data e hora da entrega e data e hora do recolhimento',
+      });
     }
     if (!itens?.length || !itens.some((i) => i.cerveja)) {
       return res.status(400).json({ erro: 'Escolha pelo menos uma cerveja' });

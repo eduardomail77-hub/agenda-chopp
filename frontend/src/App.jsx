@@ -163,6 +163,7 @@ export default function App() {
           {tab === 'cotacoes' && ehAdmin && (
             <Cotacoes
               ehAdmin={ehAdmin}
+              orders={orders}
               onConvertida={async () => {
                 await loadPedidos();
                 setTab('pendentes');

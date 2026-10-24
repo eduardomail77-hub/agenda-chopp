@@ -1,5 +1,6 @@
 import express from 'express';
 import { query, transacao } from '../db/connection.js';
+import { chopeirasEmConflito, mensagemConflito } from '../utils/ocupacao.js';
 
 // O acesso a estas rotas já é restrito a administrador em src/index.js
 const router = express.Router();
@@ -137,6 +138,17 @@ router.post('/:id/converter', async (req, res) => {
     if (!chopeiras?.length) {
       return res.status(400).json({ erro: 'Escolha as chopeiras do pedido' });
     }
+    if (!cotacao.data_entrega || !cotacao.hora_entrega || !cotacao.data_coleta || !cotacao.hora_coleta) {
+      return res.status(400).json({
+        erro: 'Preencha data e hora de entrega e de recolhimento antes de gerar o pedido',
+      });
+    }
+    const conflitos = await chopeirasEmConflito(
+      chopeiras,
+      String(cotacao.data_entrega instanceof Date ? cotacao.data_entrega.toISOString() : cotacao.data_entrega).split('T')[0],
+      String(cotacao.data_coleta instanceof Date ? cotacao.data_coleta.toISOString() : cotacao.data_coleta).split('T')[0]
+    );
+    if (conflitos.length) return res.status(409).json({ erro: mensagemConflito(conflitos) });
     if (!cotacao.itens.every((i) => i.litros > 0 && i.valor_litro > 0)) {
       return res.status(400).json({
         erro: 'Preencha litros e valor por litro de cada cerveja antes de converter',

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getChopeiras, getCervejas, getUsuarios, getPreferencias } from '../services/api';
 import Field from './common/Field';
+import { chopeirasOcupadas } from '../utils/ocupacao';
 
 const viasTxt = (v) => `${v} via${v > 1 ? 's' : ''}`;
 
@@ -160,20 +161,9 @@ export default function FormPedido({
 
   const rmItem = (i) => setF((p) => ({ ...p, itens: p.itens.filter((_, idx) => idx !== i) }));
 
-  // Chopeira presa em outro pedido confirmado na mesma data.
-  // O próprio pedido não entra na conta, senão a edição perderia a seleção atual.
-  const ocupadas = new Set();
-  if (f.data_entrega) {
-    orders.forEach((o) => {
-      if (o.id === pedido?.id) return;
-      if (o.status !== 'confirmado') return;
-      const inicio = paraInputData(o.data_entrega);
-      const fim = paraInputData(o.data_coleta) || inicio;
-      if (f.data_entrega >= inicio && f.data_entrega <= fim) {
-        o.chopeiras?.forEach((c) => ocupadas.add(c));
-      }
-    });
-  }
+  // Presa em outro pedido confirmado em qualquer dia do período. O próprio
+  // pedido fica de fora, senão a edição perderia a seleção atual.
+  const ocupadas = chopeirasOcupadas(orders, f.data_entrega, f.data_coleta, pedido?.id);
 
   const toggleChop = (id) =>
     set('chopeiras', f.chopeiras.includes(id)
@@ -190,6 +180,9 @@ export default function FormPedido({
   const valido =
     f.cliente &&
     f.data_entrega &&
+    f.hora_entrega &&
+    f.data_coleta &&
+    f.hora_coleta &&
     f.chopeiras.length > 0 &&
     f.itens.some((it) => it.cerveja && it.litros);
 
@@ -401,7 +394,7 @@ export default function FormPedido({
                   {c.tipo}
                   {c.vazao ? ` · ${c.vazao} L/h` : ''}
                 </span>
-                {busy && <em>ocupada</em>}
+                {busy && <em>ocupada ({ocupadas.get(c.id)})</em>}
               </button>
             );
           })}

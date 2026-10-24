@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { chopeirasOcupadas } from '../utils/ocupacao';
 import {
   getCotacoes,
   atualizarCotacao,
@@ -90,7 +91,7 @@ function montarMensagem(c, itens, entrega, desconto) {
   return linhas.join('\n');
 }
 
-export default function Cotacoes({ ehAdmin, onConvertida }) {
+export default function Cotacoes({ ehAdmin, orders = [], onConvertida }) {
   const [cotacoes, setCotacoes] = useState([]);
   const [aberta, setAberta] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -161,6 +162,7 @@ export default function Cotacoes({ ehAdmin, onConvertida }) {
       {aberta && (
         <ResponderCotacao
           cotacao={aberta}
+          orders={orders}
           ehAdmin={ehAdmin}
           onFechar={() => setAberta(null)}
           onAtualizada={async () => {
@@ -271,7 +273,7 @@ function CardCotacao({ cotacao: c, onAbrir }) {
   );
 }
 
-function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConvertida }) {
+function ResponderCotacao({ cotacao, orders, ehAdmin, onFechar, onAtualizada, onConvertida }) {
   const [itens, setItens] = useState(
     cotacao.itens?.length ? cotacao.itens.map((i) => ({ ...i })) : []
   );
@@ -341,6 +343,10 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
 
   const precificada = itens.length > 0 && itens.every((i) => Number(i.litros) > 0 && Number(i.valor_litro) > 0);
   const zap = paraWhatsApp(cotacao.telefone);
+  const horariosOk = Boolean(
+    quando.data_entrega && quando.hora_entrega && quando.data_coleta && quando.hora_coleta
+  );
+  const ocupadas = chopeirasOcupadas(orders, quando.data_entrega, quando.data_coleta);
 
   async function salvar(novoStatus) {
     setSalvando(true);
@@ -372,6 +378,10 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
 
   /** Salva, marca como respondida e abre o WhatsApp com a mensagem pronta. */
   async function enviarPeloWhatsApp() {
+    if (!horariosOk) {
+      setErro('Preencha data e hora de entrega e de recolhimento');
+      return;
+    }
     if (!zap) {
       setErro('Telefone do cliente não está num formato que o WhatsApp aceite');
       return;
@@ -385,6 +395,10 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
   }
 
   async function converter() {
+    if (!horariosOk) {
+      setErro('Preencha data e hora de entrega e de recolhimento');
+      return;
+    }
     if (!escolhidas.length) {
       setErro('Escolha as chopeiras antes de gerar o pedido');
       return;
@@ -442,17 +456,17 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
                   onChange={(e) => setQ('data_entrega', e.target.value)} />
               </label>
               <label className="field">
-                <span>Hora da entrega</span>
+                <span>Hora da entrega *</span>
                 <input type="time" value={quando.hora_entrega}
                   onChange={(e) => setQ('hora_entrega', e.target.value)} />
               </label>
               <label className="field">
-                <span>Data do recolhimento</span>
+                <span>Data do recolhimento *</span>
                 <input type="date" value={quando.data_coleta} min={quando.data_entrega || undefined}
                   onChange={(e) => setQ('data_coleta', e.target.value)} />
               </label>
               <label className="field">
-                <span>Hora do recolhimento</span>
+                <span>Hora do recolhimento *</span>
                 <input type="time" value={quando.hora_coleta}
                   onChange={(e) => setQ('hora_coleta', e.target.value)} />
               </label>
@@ -554,7 +568,7 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
               type="button"
               className="save"
               onClick={enviarPeloWhatsApp}
-              disabled={!precificada || salvando}
+              disabled={!precificada || !horariosOk || salvando}
               title={precificada ? '' : 'Preencha litros e valor por litro de cada cerveja'}
             >
               {salvando ? 'Salvando...' : 'Enviar cotação pelo WhatsApp'}
@@ -573,7 +587,8 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
                   <button
                     key={c.id}
                     type="button"
-                    className={`pick ${escolhidas.includes(c.id) ? 'on' : ''} ${c.tipo === 'Gelo' ? 'gelo' : ''}`}
+                    disabled={ocupadas.has(c.id)}
+                    className={`pick ${escolhidas.includes(c.id) ? 'on' : ''} ${ocupadas.has(c.id) ? 'busy' : ''} ${c.tipo === 'Gelo' ? 'gelo' : ''}`}
                     onClick={() => toggleChop(c.id)}
                   >
                     <div className="pickHead">
@@ -583,6 +598,7 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
                     <span className="pickSub">
                       {c.tipo}{c.vazao ? ` · ${c.vazao} L/h` : ''}
                     </span>
+                    {ocupadas.has(c.id) && <em>ocupada ({ocupadas.get(c.id)})</em>}
                   </button>
                 ))}
               </div>
@@ -606,7 +622,7 @@ function ResponderCotacao({ cotacao, ehAdmin, onFechar, onAtualizada, onConverti
                 type="button"
                 className="btn-primary"
                 onClick={converter}
-                disabled={!precificada || salvando}
+                disabled={!precificada || !horariosOk || salvando}
               >
                 Gerar pedido a partir desta cotação
               </button>

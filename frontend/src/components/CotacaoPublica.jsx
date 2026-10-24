@@ -61,6 +61,9 @@ export default function CotacaoPublica() {
     f.cliente.trim() &&
     f.telefone.trim() &&
     f.data_entrega &&
+    f.hora_entrega &&
+    f.data_coleta &&
+    f.hora_coleta &&
     escolhidas.length > 0 &&
     escolhidas.every((i) => litrosValidos(i.litros));
 
@@ -170,7 +173,7 @@ export default function CotacaoPublica() {
               />
             </label>
             <label className="field">
-              <span>Hora da entrega</span>
+              <span>Hora da entrega *</span>
               <input
                 type="time"
                 value={f.hora_entrega}
@@ -178,7 +181,7 @@ export default function CotacaoPublica() {
               />
             </label>
             <label className="field">
-              <span>Data do recolhimento</span>
+              <span>Data do recolhimento *</span>
               <input
                 type="date"
                 min={f.data_entrega || hoje}
@@ -187,7 +190,7 @@ export default function CotacaoPublica() {
               />
             </label>
             <label className="field">
-              <span>Hora do recolhimento</span>
+              <span>Hora do recolhimento *</span>
               <input
                 type="time"
                 value={f.hora_coleta}
