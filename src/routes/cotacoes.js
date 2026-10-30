@@ -160,7 +160,7 @@ router.post('/:id/converter', async (req, res) => {
         `INSERT INTO pedidos
            (cliente, telefone, endereco, data_entrega, hora_entrega, data_coleta, hora_coleta,
             valor_entrega_coleta, desconto, resp_entrega, resp_coleta, status, origem, criado_por)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pendente','cotacao',$12)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pendente','cliente',$12)
          RETURNING *`,
         [
           cotacao.cliente,
