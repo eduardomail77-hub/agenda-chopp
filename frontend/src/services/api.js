@@ -124,6 +124,14 @@ export const criarChopeira = (data) =>
 export const atualizarChopeira = (id, data) =>
   req(`/config/chopeiras/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
+export const getClientesFrequentes = () => req('/clientes-frequentes');
+export const criarClienteFrequente = (data) =>
+  req('/clientes-frequentes', { method: 'POST', body: JSON.stringify(data) });
+export const atualizarClienteFrequente = (id, data) =>
+  req(`/clientes-frequentes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const novoLinkClienteFrequente = (id) =>
+  req(`/clientes-frequentes/${id}/novo-link`, { method: 'POST' });
+
 export const getStatusGoogle = () => req('/config/google/status');
 export const getStatusWhatsApp = () => req('/config/whatsapp/status');
 export const testarAgendaDiaria = () =>

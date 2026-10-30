@@ -38,6 +38,25 @@ export default function CotacaoPublica() {
     itens: [{ cerveja: '', litros: '' }],
   });
 
+  // Link pessoal de cliente frequente (?c=token) já abre com os dados dele
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('c');
+    if (!token) return;
+    fetch(`${API_URL}/publico/cliente/${encodeURIComponent(token)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => {
+        if (c) {
+          setF((p) => ({
+            ...p,
+            cliente: c.nome || '',
+            telefone: c.telefone || '',
+            endereco: c.endereco || '',
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetch(`${API_URL}/publico/catalogo`)
       .then((r) => r.json())

@@ -52,6 +52,24 @@ router.get('/catalogo', async (req, res) => {
   }
 });
 
+/**
+ * Dados de um cliente frequente, achados só pelo token do link pessoal dele.
+ * Nunca por nome ou telefone: seria listar a carteira de clientes pra qualquer um.
+ */
+router.get('/cliente/:token', limitarEnvios, async (req, res) => {
+  try {
+    const { rows } = await query(
+      'SELECT nome, telefone, endereco FROM clientes_frequentes WHERE token = $1 AND ativo = true',
+      [String(req.params.token).slice(0, 64)]
+    );
+    if (rows.length === 0) return res.status(404).json({ erro: 'Link não encontrado' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Erro ao buscar cliente frequente:', err.message);
+    res.status(500).json({ erro: 'Erro ao carregar seus dados' });
+  }
+});
+
 const TIPOS_CHOPEIRA = ['eletrica', 'gelo', 'indiferente'];
 const BARRIL = 30;
 const LIMITES = { cliente: 120, telefone: 30, endereco: 300, observacoes: 500, cerveja: 120 };

@@ -6,6 +6,7 @@ import pedidosRoutes from './routes/pedidos.js';
 import recursosRoutes from './routes/recursos.js';
 import publicoRoutes from './routes/publico.js';
 import cotacoesRoutes from './routes/cotacoes.js';
+import clientesFrequentesRoutes from './routes/clientesFrequentes.js';
 import { exigirLogin, exigirAdmin } from './middleware/auth.js';
 import { initializeDatabase } from './db/init.js';
 import { iniciarAgendador } from './services/agendador.js';
@@ -59,6 +60,7 @@ app.use('/api/pedidos', exigirLogin, pedidosRoutes);
 app.use('/api/recursos', exigirLogin, recursosRoutes);
 // Cotação é assunto de administrador: envolve preço e negociação
 app.use('/api/cotacoes', exigirLogin, exigirAdmin, cotacoesRoutes);
+app.use('/api/clientes-frequentes', exigirLogin, exigirAdmin, clientesFrequentesRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ erro: 'Rota não encontrada' });

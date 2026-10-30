@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { chopeirasOcupadas } from '../utils/ocupacao';
+import ClientesFrequentes from './ClientesFrequentes';
 import {
   getCotacoes,
   atualizarCotacao,
@@ -129,6 +130,7 @@ export default function Cotacoes({ ehAdmin, orders = [], onConvertida }) {
       {erro && <div className="error">{erro}</div>}
 
       <LinkCotacao />
+      <ClientesFrequentes />
 
       <div className="subtabs">
         {[

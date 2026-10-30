@@ -181,6 +181,33 @@ async function migrate() {
     CREATE INDEX IF NOT EXISTS idx_pedidos_coleta ON pedidos(data_coleta)
   `);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS clientes_frequentes (
+      id SERIAL PRIMARY KEY,
+      nome VARCHAR(255) NOT NULL,
+      telefone VARCHAR(30) NOT NULL,
+      endereco TEXT,
+      token VARCHAR(64) UNIQUE NOT NULL,
+      ativo BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Clientes frequentes pré-cadastrados vêm de variável de ambiente (JSON), pra
+  // nome, telefone e endereço de cliente não ficarem gravados no repositório.
+  try {
+    const semente = JSON.parse(process.env.CLIENTES_FREQUENTES_SEED || '[]');
+    for (const c of semente) {
+      await query(
+        `INSERT INTO clientes_frequentes (nome, telefone, endereco, token)
+         VALUES ($1,$2,$3,$4) ON CONFLICT (token) DO NOTHING`,
+        [c.nome, c.telefone, c.endereco || null, c.token]
+      );
+    }
+  } catch (err) {
+    console.error('CLIENTES_FREQUENTES_SEED inválido, ignorado:', err.message);
+  }
+
   console.log('✓ Migrações executadas com sucesso');
 }
 
