@@ -297,6 +297,12 @@ function ResponderCotacao({ cotacao, orders, ehAdmin, onFechar, onAtualizada, on
   const [erro, setErro] = useState(null);
   const [ok, setOk] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const erroPertoRef = useRef(null);
+
+  // Erro aparece também junto do botão; rola até ele pra não ficar fora da vista
+  useEffect(() => {
+    if (erro) erroPertoRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [erro]);
 
   useEffect(() => {
     const aoTeclar = (e) => e.key === 'Escape' && onFechar();
@@ -620,13 +626,14 @@ function ResponderCotacao({ cotacao, orders, ehAdmin, onFechar, onAtualizada, on
                   </select>
                 </label>
               </div>
+              {erro && <div className="error" ref={erroPertoRef}>{erro}</div>}
               <button
                 type="button"
                 className="btn-primary"
                 onClick={converter}
                 disabled={!precificada || !horariosOk || salvando}
               >
-                Gerar pedido a partir desta cotação
+                {salvando ? 'Gerando...' : 'Gerar pedido a partir desta cotação'}
               </button>
             </div>
           )}
