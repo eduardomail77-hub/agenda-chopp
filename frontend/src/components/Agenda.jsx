@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Row from './common/Row';
 
 const brl = (n) =>
@@ -37,13 +38,47 @@ const momento = (data, h, resp) => {
 };
 
 export default function Agenda({ orders, ehAdmin, podeEditar, onEditar, onConfirm, onTogglePago }) {
-  const sorted = [...orders].sort((a, b) =>
+  const [visao, setVisao] = useState('ativos');
+
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+  // Atendido: confirmado e com a última etapa (recolhimento, ou entrega se não
+  // houver) já passada. Entregue mas ainda no cliente continua ativo.
+  // Pendente nunca vira atendido, senão sumiria sem ninguém decidir.
+  const atendido = (o) =>
+    o.status === 'confirmado' && (soData(o.data_coleta) || soData(o.data_entrega)) < hoje;
+
+  const ordenados = [...orders].sort((a, b) =>
     soData(a.data_entrega).localeCompare(soData(b.data_entrega))
   );
-  const pendentes = sorted.filter((o) => o.status === 'pendente').length;
+  const ativos = ordenados.filter((o) => !atendido(o));
+  const atendidos = ordenados.filter(atendido).reverse(); // mais recentes primeiro
+  const sorted = visao === 'ativos' ? ativos : atendidos;
+  const pendentes = ativos.filter((o) => o.status === 'pendente').length;
+  const totalAtendidos = atendidos.reduce((s, o) => s + calcTotal(o), 0);
 
   return (
     <main className="body">
+      <div className="subtabs">
+        <button className={visao === 'ativos' ? 'subtab on' : 'subtab'} onClick={() => setVisao('ativos')}>
+          Ativos ({ativos.length})
+        </button>
+        <button className={visao === 'atendidos' ? 'subtab on' : 'subtab'} onClick={() => setVisao('atendidos')}>
+          Já atendidos ({atendidos.length})
+        </button>
+      </div>
+
+      {visao === 'atendidos' && (
+        <p className="hint">
+          {atendidos.length} {atendidos.length === 1 ? 'pedido atendido' : 'pedidos atendidos'}, somando {brl(totalAtendidos)}.
+        </p>
+      )}
+      {sorted.length === 0 && (
+        <p className="hint">
+          {visao === 'ativos' ? 'Nenhum pedido ativo no momento.' : 'Nenhum pedido atendido ainda.'}
+        </p>
+      )}
+
       {pendentes > 0 && (
         <div className="alert">
           <b>{pendentes}</b> {pendentes === 1 ? 'pedido pendente' : 'pedidos pendentes'} aguardando você conferir disponibilidade e confirmar.
