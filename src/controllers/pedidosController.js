@@ -87,6 +87,7 @@ export async function createPedido(req, res) {
       pago = false,
       resp_entrega,
       resp_coleta,
+      observacoes,
       itens,
       chopeiras,
     } = req.body;
@@ -115,8 +116,8 @@ export async function createPedido(req, res) {
         `INSERT INTO pedidos
            (cliente, telefone, endereco, data_entrega, hora_entrega, data_coleta, hora_coleta,
             gas, valor_entrega_coleta, desconto, pago, resp_entrega, resp_coleta,
-            status, origem, criado_por)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pendente','interno',$14)
+            status, origem, criado_por, observacoes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pendente','interno',$14,$15)
          RETURNING *`,
         [
           cliente,
@@ -133,6 +134,7 @@ export async function createPedido(req, res) {
           resp_entrega || null,
           resp_coleta || null,
           req.usuario.id,
+          observacoes?.trim() || null,
         ]
       );
 
@@ -231,7 +233,7 @@ export async function updatePedido(req, res) {
     const EDITAVEIS = [
       'cliente', 'telefone', 'endereco', 'data_entrega', 'hora_entrega',
       'data_coleta', 'hora_coleta', 'gas', 'valor_entrega_coleta',
-      'desconto', 'pago', 'resp_entrega', 'resp_coleta',
+      'desconto', 'pago', 'resp_entrega', 'resp_coleta', 'observacoes',
     ];
 
     const alvos = EDITAVEIS.filter(temCampo);

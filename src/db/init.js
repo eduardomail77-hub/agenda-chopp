@@ -150,6 +150,7 @@ async function migrate() {
 
     -- Impressão do que já foi publicado na agenda, para não reescrever evento à toa
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS evento_hash VARCHAR(64);
+    ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS observacoes TEXT;
 
     -- As listas seguem a ordem de venda, não a alfabética
     ALTER TABLE cervejas ADD COLUMN IF NOT EXISTS ordem INTEGER DEFAULT 99;
@@ -159,6 +160,13 @@ async function migrate() {
   await query(`
     UPDATE pedidos SET google_event_entrega = google_event_id
     WHERE google_event_id IS NOT NULL AND google_event_entrega IS NULL
+  `);
+
+  // Pedidos que já nasceram de cotação antes do campo existir herdam a observação dela
+  await query(`
+    UPDATE pedidos p SET observacoes = c.observacoes
+    FROM cotacoes c
+    WHERE c.pedido_id = p.id AND p.observacoes IS NULL AND c.observacoes IS NOT NULL
   `);
 
   // A Predileta é vendida como Pilsen, o seed original trouxe Cream Ale

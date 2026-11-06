@@ -119,6 +119,7 @@ export default function Agenda({ orders, ehAdmin, podeEditar, onEditar, onConfir
                 </span>
               </div>
               <Row label="Chopeiras" v={o.chopeiras?.join('  ·  ') || 'N/A'} />
+              {o.observacoes && <Row label="Observações" v={o.observacoes} />}
               <Row label="Entrega" v={momento(o.data_entrega, o.hora_entrega, o.resp_entrega)} />
               <Row label="Recolhimento" v={momento(o.data_coleta, o.hora_coleta, o.resp_coleta)} />
             </div>

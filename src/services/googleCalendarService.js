@@ -122,6 +122,7 @@ function descricao(pedido, etapa) {
     `Cervejas: ${cervejas}`,
     `Chopeiras: ${chopeiras}`,
     `Gás: ${pedido.gas ? 'Sim' : 'Não'}`,
+    ...(pedido.observacoes ? [`Observações: ${pedido.observacoes}`] : []),
     '',
     `Entrega: ${soData(pedido.data_entrega).split('-').reverse().join('/')} às ${(pedido.hora_entrega || '10:00').slice(0, 5)} · ${pedido.resp_entrega || 'a definir'}`,
     `Recolhimento: ${pedido.data_coleta ? soData(pedido.data_coleta).split('-').reverse().join('/') : 'a definir'} às ${(pedido.hora_coleta || '10:00').slice(0, 5)} · ${pedido.resp_coleta || 'a definir'}`,

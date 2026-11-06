@@ -42,6 +42,7 @@ const VAZIO = {
   pago: false,
   resp_entrega: '',
   resp_coleta: '',
+  observacoes: '',
 };
 
 /**
@@ -110,6 +111,7 @@ export default function FormPedido({
           pago: Boolean(pedido.pago),
           resp_entrega: pedido.resp_entrega || '',
           resp_coleta: pedido.resp_coleta || '',
+          observacoes: pedido.observacoes || '',
         });
       } else {
         setChopeiras(chop.filter((c) => c.ativo));
@@ -207,6 +209,7 @@ export default function FormPedido({
         // String vazia vira null para o backend não gravar responsável em branco
         resp_entrega: f.resp_entrega || null,
         resp_coleta: f.resp_coleta || null,
+        observacoes: f.observacoes || null,
         itens: f.itens.filter((it) => it.cerveja && it.litros),
         chopeiras: f.chopeiras,
       });
@@ -412,6 +415,17 @@ export default function FormPedido({
           <input type="checkbox" checked={f.gas} onChange={(e) => set('gas', e.target.checked)} />
           Inclui gás
         </label>
+      </div>
+
+      <div className="fblock">
+        <label className="lbl">Observações</label>
+        <Field label="Detalhes do pedido (aparecem no card e no evento do Google Agenda)" span2>
+          <input
+            value={f.observacoes}
+            onChange={(e) => set('observacoes', e.target.value)}
+            placeholder="Ex.: tomada na garagem, chopeirinha de sempre"
+          />
+        </Field>
       </div>
 
       <div className="fblock">
