@@ -163,7 +163,10 @@ async function migrate() {
   `);
 
   // Uso interno e cortesia têm litro a R$ 0; a regra original exigia maior que zero
-  await query();
+  await query(`
+    ALTER TABLE pedido_itens DROP CONSTRAINT IF EXISTS pedido_itens_valor_litro_check;
+    ALTER TABLE pedido_itens ADD CONSTRAINT pedido_itens_valor_litro_check CHECK (valor_litro >= 0);
+  `);
 
   // Pedidos que já nasceram de cotação antes do campo existir herdam a observação dela
   await query(`
