@@ -4,6 +4,7 @@ import Login from './components/Login';
 import Agenda from './components/Agenda';
 import Disponibilidade from './components/Disponibilidade';
 import NovoPedido from './components/NovoPedido';
+import UsoInterno from './components/UsoInterno';
 import Pendentes from './components/Pendentes';
 import Configuracoes from './components/Configuracoes';
 import EditarPedido from './components/EditarPedido';
@@ -17,6 +18,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editando, setEditando] = useState(null);
+  const [usoInterno, setUsoInterno] = useState(false);
 
   const ehAdmin = usuario?.perfil === 'admin';
 
@@ -145,6 +147,7 @@ export default function App() {
               onEditar={setEditando}
               onConfirm={handleConfirm}
               onTogglePago={handleTogglePago}
+              onUsoInterno={() => setUsoInterno(true)}
             />
           )}
           {tab === 'pendentes' && (
@@ -173,6 +176,18 @@ export default function App() {
           {tab === 'novo' && <NovoPedido orders={orders} onSave={handleSaveNew} />}
           {tab === 'config' && <Configuracoes usuario={usuario} />}
         </>
+      )}
+
+      {usoInterno && (
+        <UsoInterno
+          orders={orders}
+          onFechar={() => setUsoInterno(false)}
+          onConcluido={async (aviso) => {
+            setUsoInterno(false);
+            setError(aviso);
+            await loadPedidos();
+          }}
+        />
       )}
 
       {editando && (

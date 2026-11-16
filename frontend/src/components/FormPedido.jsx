@@ -58,6 +58,7 @@ export default function FormPedido({
   onSubmit,
   onCancel,
   textoBotao = 'Salvar como pendente',
+  padrao = null,
 }) {
   const editando = Boolean(pedido);
 
@@ -128,6 +129,7 @@ export default function FormPedido({
               valor_litro: cervejasAtivas[0]?.preco_litro || '',
             },
           ],
+          ...(padrao || {}),
         }));
       }
     } catch (err) {
