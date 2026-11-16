@@ -158,8 +158,9 @@ export async function createPedido(req, res) {
 
     res.status(201).json(await carregarDetalhes(pedido));
   } catch (err) {
-    console.error('Erro ao criar pedido:', err.message);
-    res.status(500).json({ erro: 'Erro ao criar pedido' });
+    console.error('Erro ao criar pedido:', err.message, err.detail || '');
+    // Rota autenticada: mostrar o motivo real poupa uma rodada de adivinhação
+    res.status(500).json({ erro: `Erro ao criar pedido: ${err.message}` });
   }
 }
 
