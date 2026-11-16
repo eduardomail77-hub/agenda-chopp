@@ -7,7 +7,7 @@ import FormPedido from './FormPedido';
  * Nasce já confirmado, porque o objetivo é justamente segurar as chopeiras,
  * e só pedido confirmado bloqueia frota.
  */
-export default function UsoInterno({ orders, onFechar, onConcluido }) {
+export default function UsoInterno({ orders, interno = true, onFechar, onConcluido }) {
   useEffect(() => {
     const aoTeclar = (e) => e.key === 'Escape' && onFechar();
     window.addEventListener('keydown', aoTeclar);
@@ -34,9 +34,11 @@ export default function UsoInterno({ orders, onFechar, onConcluido }) {
       <div className="modalCaixa" onClick={(e) => e.stopPropagation()}>
         <div className="modalTopo">
           <div>
-            <h2>Uso interno</h2>
+            <h2>{interno ? 'Uso interno' : 'Venda direta'}</h2>
             <p className="hint" style={{ margin: 0 }}>
-              Chopp da própria casa. Já entra confirmado e bloqueia as chopeiras no período.
+              {interno
+                ? 'Chopp da própria casa. Já entra confirmado e bloqueia as chopeiras no período.'
+                : 'Venda fechada na hora, por exemplo no balcão. Já entra confirmada e bloqueia as chopeiras no período.'}
             </p>
           </div>
           <button className="modalFechar" onClick={onFechar} title="Fechar">✕</button>
@@ -45,13 +47,17 @@ export default function UsoInterno({ orders, onFechar, onConcluido }) {
           orders={orders}
           onSubmit={handleSubmit}
           onCancel={onFechar}
-          textoBotao="Lançar e bloquear chopeiras"
-          padrao={{
-            cliente: 'Fora da Lei (uso interno)',
-            endereco: 'Fora da Lei Pub',
-            valor_entrega_coleta: 0,
-            pago: true,
-          }}
+          textoBotao={interno ? 'Lançar e bloquear chopeiras' : 'Lançar venda confirmada'}
+          padrao={
+            interno
+              ? {
+                  cliente: 'Fora da Lei (uso interno)',
+                  endereco: 'Fora da Lei Pub',
+                  valor_entrega_coleta: 0,
+                  pago: true,
+                }
+              : null
+          }
         />
       </div>
     </div>

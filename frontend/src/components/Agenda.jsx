@@ -37,7 +37,7 @@ const momento = (data, h, resp) => {
   return partes.join(' · ');
 };
 
-export default function Agenda({ orders, ehAdmin, podeEditar, onEditar, onConfirm, onTogglePago, onUsoInterno }) {
+export default function Agenda({ orders, ehAdmin, podeEditar, onEditar, onConfirm, onTogglePago, onUsoInterno, onVendaDireta }) {
   const [visao, setVisao] = useState('ativos');
 
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
@@ -60,8 +60,13 @@ export default function Agenda({ orders, ehAdmin, podeEditar, onEditar, onConfir
   return (
     <main className="body">
       <div className="subtabs">
+        {ehAdmin && onVendaDireta && (
+          <button className="btn-primary" style={{ marginLeft: 'auto', order: 2 }} onClick={onVendaDireta}>
+            + Venda direta
+          </button>
+        )}
         {ehAdmin && onUsoInterno && (
-          <button className="btn-primary" style={{ marginLeft: 'auto', order: 2 }} onClick={onUsoInterno}>
+          <button className="btn-sair" style={{ order: 3 }} onClick={onUsoInterno}>
             + Uso interno
           </button>
         )}

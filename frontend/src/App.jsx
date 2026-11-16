@@ -147,7 +147,8 @@ export default function App() {
               onEditar={setEditando}
               onConfirm={handleConfirm}
               onTogglePago={handleTogglePago}
-              onUsoInterno={() => setUsoInterno(true)}
+              onUsoInterno={() => setUsoInterno('interno')}
+              onVendaDireta={() => setUsoInterno('venda')}
             />
           )}
           {tab === 'pendentes' && (
@@ -181,6 +182,7 @@ export default function App() {
       {usoInterno && (
         <UsoInterno
           orders={orders}
+          interno={usoInterno === 'interno'}
           onFechar={() => setUsoInterno(false)}
           onConcluido={async (aviso) => {
             setUsoInterno(false);
