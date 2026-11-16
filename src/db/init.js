@@ -162,6 +162,9 @@ async function migrate() {
     WHERE google_event_id IS NOT NULL AND google_event_entrega IS NULL
   `);
 
+  // Uso interno e cortesia têm litro a R$ 0; a regra original exigia maior que zero
+  await query();
+
   // Pedidos que já nasceram de cotação antes do campo existir herdam a observação dela
   await query(`
     UPDATE pedidos p SET observacoes = c.observacoes

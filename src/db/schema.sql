@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS pedido_itens (
   pedido_id INT NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
   cerveja VARCHAR(100) NOT NULL,
   litros DECIMAL(10, 2) NOT NULL CHECK (litros > 0),
-  valor_litro DECIMAL(10, 2) NOT NULL CHECK (valor_litro > 0),
+  valor_litro DECIMAL(10, 2) NOT NULL CHECK (valor_litro >= 0),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
