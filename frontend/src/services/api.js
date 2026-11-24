@@ -61,6 +61,20 @@ export async function login(email, senha) {
   return dados.usuario;
 }
 
+/** Login único vindo do Ferramentas Fora da Lei. */
+export async function loginSso(passe) {
+  const res = await fetch(`${API_URL}/auth/sso`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passe }),
+  });
+  const dados = await res.json();
+  if (!res.ok) throw new Error(dados?.erro || 'Erro ao entrar');
+  localStorage.setItem(CHAVE_TOKEN, dados.token);
+  localStorage.setItem(CHAVE_USUARIO, JSON.stringify(dados.usuario));
+  return dados.usuario;
+}
+
 export const trocarSenha = (senha_atual, senha_nova) =>
   req('/auth/trocar-senha', { method: 'POST', body: JSON.stringify({ senha_atual, senha_nova }) });
 

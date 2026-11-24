@@ -3,7 +3,40 @@ import bcrypt from 'bcryptjs';
 import { query } from '../db/connection.js';
 import { gerarToken, exigirLogin } from '../middleware/auth.js';
 
+import sso from '../sso-passe.cjs';
+
 const router = express.Router();
+
+// Login único vindo do Ferramentas Fora da Lei (só Eduardo e Gilberto). Passe de 60s, uso único.
+// Acha o usuário pelo e-mail configurado; sem e-mail, pelo primeiro nome se só houver um ativo.
+const SSO_PADRAO = {
+  eduardo: { emails: ['eduardo@foradalei.com.br'], nome: 'Eduardo' },
+  gilberto: { emails: ['gilberto@foradalei.com.br'], nome: 'Gilberto' },
+};
+router.post('/sso', async (req, res) => {
+  try {
+    const quem = sso.conferirPasse(req.body?.passe, 'agenda');
+    if (!quem) return res.status(401).json({ erro: 'Passe inválido ou vencido' });
+    const cfg = (process.env.SSO_USUARIOS ? JSON.parse(process.env.SSO_USUARIOS) : SSO_PADRAO)[quem.sub];
+    let usuario = null;
+    if (cfg?.emails?.length) {
+      const { rows } = await query('SELECT * FROM usuarios WHERE email = ANY($1) AND ativo = true LIMIT 1', [cfg.emails.map((e) => e.toLowerCase())]);
+      usuario = rows[0];
+    }
+    if (!usuario && cfg?.nome) {
+      const { rows } = await query("SELECT * FROM usuarios WHERE nome ILIKE $1 AND ativo = true", [cfg.nome + '%']);
+      if (rows.length === 1) usuario = rows[0];
+    }
+    if (!usuario) return res.status(403).json({ erro: 'Usuário não encontrado na Agenda' });
+    res.json({
+      token: gerarToken(usuario),
+      usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, perfil: usuario.perfil },
+    });
+  } catch (err) {
+    console.error('Erro no SSO:', err);
+    res.status(500).json({ erro: 'Erro ao entrar' });
+  }
+});
 
 router.post('/login', async (req, res) => {
   try {
