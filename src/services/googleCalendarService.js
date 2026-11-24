@@ -254,6 +254,12 @@ export async function deleteGoogleCalendarEvent(eventId) {
 export async function compartilharCalendario(email) {
   if (!email) return;
 
+  // O Google não recusa compartilhamento repetido: trata como atualização e
+  // manda e-mail "o acesso à agenda foi atualizado". Como isto roda a cada
+  // reinício do servidor, só compartilha com quem ainda não tem acesso.
+  const jaTem = await listarAcessos();
+  if (jaTem?.includes(email.toLowerCase())) return;
+
   try {
     await calendar.acl.insert({
       calendarId: await garantirCalendario(),
